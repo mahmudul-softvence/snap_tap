@@ -37,37 +37,43 @@ class SocialiteController extends Controller
             ->stateless()
             ->user();
 
-        $user = User::firstOrCreate(
-            ['email' => $socialUser->getEmail()],
-            [
-                'name'     => $socialUser->getName() ?? $socialUser->getNickname(),
+        $user = User::where('email', $socialUser->getEmail())->first();
+
+        if ($user?->hasRole('super_admin')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Something went wrong!',
+            ], 403);
+        }
+
+        if (!$user) {
+            $user = User::create([
+                'name' => $socialUser->getName() ?? $socialUser->getNickname(),
+                'email' => $socialUser->getEmail(),
                 'password' => bcrypt(Str::random(32)),
                 'email_verified_at' => now(),
-            ]
-        );
+            ]);
+
+            $user->assignRole('user');
+
+            event(new Registered($user));
+        }
 
         $user->forceFill([
             "{$provider}_id" => $socialUser->getId(),
             'email_verified_at' => $user->email_verified_at ?? now(),
         ])->save();
 
-        // if (!$user->hasRole('user')) {
-        //     $user->assignRole('user');
-        // }
-
-        if ($user->wasRecentlyCreated) {
-            event(new Registered($user));
-        }
-
         $token = $user->createToken('social-login')->plainTextToken;
 
         return response()->json([
             'success' => true,
-            'token'   => $token,
-            'user'    => $user,
-            'role'    => $user->getRoleNames(),
+            'token' => $token,
+            'user' => $user,
+            'role' => $user->getRoleNames(),
         ]);
     }
+
 
 
     protected function validateProvider(string $provider): void
