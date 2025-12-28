@@ -22,6 +22,8 @@ class User extends Authenticatable
     protected $fillable = [
         'name',
         'email',
+        'phone',
+        'image',
         'github_id',
         'google_id',
         'facebook_id',
@@ -60,5 +62,10 @@ class User extends Authenticatable
     public function messageTemplates()
     {
         return $this->hasMany(MessageTemplate::class);
+    }
+
+    public function businessProfile()
+    {
+        return $this->hasOne(BusinessProfile::class, 'user_id', 'id');
     }
 }
