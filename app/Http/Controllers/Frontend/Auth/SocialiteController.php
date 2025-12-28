@@ -51,6 +51,10 @@ class SocialiteController extends Controller
             'email_verified_at' => $user->email_verified_at ?? now(),
         ])->save();
 
+        // if (!$user->hasRole('user')) {
+        //     $user->assignRole('user');
+        // }
+
         if ($user->wasRecentlyCreated) {
             event(new Registered($user));
         }
@@ -61,6 +65,7 @@ class SocialiteController extends Controller
             'success' => true,
             'token'   => $token,
             'user'    => $user,
+            'role'    => $user->getRoleNames(),
         ]);
     }
 
