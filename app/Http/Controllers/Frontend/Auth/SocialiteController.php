@@ -42,12 +42,14 @@ class SocialiteController extends Controller
             [
                 'name'     => $socialUser->getName() ?? $socialUser->getNickname(),
                 'password' => bcrypt(Str::random(32)),
+                'email_verified_at' => now(),
             ]
         );
 
-        $user->update([
+        $user->forceFill([
             "{$provider}_id" => $socialUser->getId(),
-        ]);
+            'email_verified_at' => $user->email_verified_at ?? now(),
+        ])->save();
 
         if ($user->wasRecentlyCreated) {
             event(new Registered($user));
@@ -61,6 +63,7 @@ class SocialiteController extends Controller
             'user'    => $user,
         ]);
     }
+
 
     protected function validateProvider(string $provider): void
     {
