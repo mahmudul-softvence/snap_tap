@@ -4,13 +4,10 @@ namespace App\Http\Controllers\Frontend\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Str;
-use Laravel\Socialite\Facades\Socialite;
 
 class RegisterController extends Controller
 {
@@ -84,5 +81,16 @@ class RegisterController extends Controller
                 ],
             ], 401);
         }
+    }
+
+
+    public function logout(Request $request): JsonResponse
+    {
+        $request->user()->currentAccessToken()->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'User logged out successfully.',
+        ], 200);
     }
 }
