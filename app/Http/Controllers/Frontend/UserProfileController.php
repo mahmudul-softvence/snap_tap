@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
+use App\Services\ImageUpload;
 
 class UserProfileController extends Controller
 {
@@ -36,13 +37,13 @@ class UserProfileController extends Controller
         $business = $user->businessProfile;
 
         $validator = Validator::make($request->all(), [
-            'name'  => 'required|string|max:255',
-            'phone' => 'nullable|string|max:50',
-            'email' => 'nullable|email|unique:users,email,' . $user->id,
-            'image' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
-            'b_name'    => 'required|string|max:255',
-            'b_type'    => 'required|string|max:255',
-            'b_email'   => ['nullable','email','max:255',Rule::unique('business_profiles', 'b_email')->ignore($business->id ?? null),],
+            'name'      => 'required|string|max:255',
+            'phone'     => 'nullable|string|max:50',
+            'email'     => 'required|email|unique:users,email,' . $user->id,
+            'image'     => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+            'b_name'    => 'required_with:b_type,b_email,b_phone,b_website,b_address,b_logo|string|max:255',
+            'b_type'    => 'required_with:b_name,b_email,b_phone,b_website,b_address,b_logo|string|max:255',
+            'b_email'   => ['nullable', 'email', 'max:255', Rule::unique('business_profiles', 'b_email')->ignore($business->id ?? null),],
             'b_phone'   => 'nullable|string|max:50',
             'b_website' => 'nullable|url|max:255',
             'b_address' => 'nullable|string|max:255',
@@ -57,41 +58,31 @@ class UserProfileController extends Controller
             ], 422);
         }
 
+        $image = ImageUpload::upload($request->image, 'user', $user->image);
         $user->name = $request->name;
-        $user->email = $request->email;
-        $user->phone = $request->phone;
-
-        if ($request->hasFile('image')) {
-            if ($user->image && file_exists(public_path($user->image))) unlink(public_path($user->image));
-            $file = $request->file('image');
-            $filename = time() . '_' . $file->getClientOriginalName();
-            $file->move(public_path('uploads/users'), $filename);
-            $user->image = 'uploads/users/' . $filename;
-            $user->save();
+        if ($request->filled('email')) {
+            $user->email = $request->email;
         }
-
+        $user->phone = $request->phone;
+        $user->image = $image;
         $user->save();
 
-        $business = BusinessProfile::updateOrCreate([
-            'user_id' => $user->id
-        ], [
-            'b_name' => $request->b_name,
-            'b_type' => $request->b_type,
-            'b_email' => $request->b_email,
-            'b_phone' => $request->b_phone,
-            'b_website' => $request->b_website,
-            'b_address' => $request->b_address,
-        ]);
+        if ($request->filled('b_name') && $request->filled('b_type')) {
 
-        if ($request->hasFile('b_logo')) {
-            if ($business->b_logo && file_exists(public_path($business->b_logo))) unlink(public_path($business->b_logo));
-            $file = $request->file('b_logo');
-            $filename = time() . '_' . $file->getClientOriginalName();
-            $file->move(public_path('uploads/business_profile'), $filename);
-            $business->b_logo = 'uploads/business_profile/' . $filename;
-            $business->save();
+            $b_logo = ImageUpload::upload($request->b_logo, 'business_profile', $business?->b_logo);
+
+            $business = BusinessProfile::updateOrCreate([
+                'user_id' => $user->id
+            ], [
+                'b_name'    => $request->b_name,
+                'b_type'    => $request->b_type,
+                'b_email'   => $request->b_email,
+                'b_phone'   => $request->b_phone,
+                'b_website' => $request->b_website,
+                'b_address' => $request->b_address,
+                'b_logo'    => $b_logo,
+            ]);
         }
-
         return response()->json([
             'success' => true,
             'message' => 'Profile updated successfully',

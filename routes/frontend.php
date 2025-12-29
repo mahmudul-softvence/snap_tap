@@ -40,13 +40,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('message_template/update/{id}', 'update');
         Route::delete('message_template/delete/{id}', 'destroy');
     });
-});
 
+    // User Profile
+    Route::controller(UserProfileController::class)->group(function () {
+        Route::get('user-profile/show', 'showProfile');
+        Route::put('user-profile/update', 'update');
+   });
 
-
-Route::middleware('auth:sanctum')->group(function () {
-    Route::get('user-profile/show', [UserProfileController::class, 'showProfile']);
-    Route::put('user-profile/update', [UserProfileController::class, 'update']);
 });
 
 
