@@ -68,4 +68,22 @@ class User extends Authenticatable
     {
         return $this->hasOne(BusinessProfile::class, 'user_id', 'id');
     }
+
+    //for google and facebook business accounts
+    public function businessAccounts()
+    {
+        return $this->hasMany(UserBusinessAccount::class);
+    }
+
+    // Helper for Google
+    public function googleBusinessAccount()
+    {
+        return $this->businessAccounts()->where('provider', 'google')->first();
+    }
+    
+    // Helper for Facebook (future)
+    public function facebookBusinessAccount()
+    {
+        return $this->businessAccounts()->where('provider', 'facebook')->first();
+    }
 }

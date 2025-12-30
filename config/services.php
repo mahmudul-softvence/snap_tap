@@ -53,4 +53,10 @@ return [
         'redirect'      => '/api/auth/google/callback',
     ],
 
+    'google_gmb' => [
+        'client_id' => env('GOOGLE_GMB_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_GMB_CLIENT_SECRET'),
+        'redirect' => env('GOOGLE_GMB_REDIRECT_URI'),
+    ],
+
 ];

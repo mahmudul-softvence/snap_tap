@@ -5,6 +5,7 @@ use App\Http\Controllers\Frontend\Auth\SocialiteController;
 use App\Http\Controllers\Frontend\QrController;
 use App\Http\Controllers\MessageTemplateController;
 use App\Http\Controllers\Frontend\UserProfileController;
+use App\Http\Controllers\Frontend\GoogleBusinessController;
 use Illuminate\Support\Facades\Route;
 
 
@@ -48,5 +49,20 @@ Route::middleware('auth:sanctum')->group(function () {
    });
 
 });
+
+
+// Google Business Profile (GMB)
+// Route::middleware('auth:sanctum')->group(function () {
+
+    Route::get('/google/gmb/connect', [GoogleBusinessController::class, 'redirect']);
+    Route::get('/google/gmb/callback', [GoogleBusinessController::class, 'callback']);
+
+    Route::get('/business-accounts/{id}/reviews', [GoogleBusinessController::class, 'reviews']);
+    Route::post('/business-accounts/{id}/reviews/{reviewId}/reply', [GoogleBusinessController::class, 'reply']);
+
+    Route::post('/business-accounts/{id}/disconnect', [GoogleBusinessController::class, 'disconnect']);
+// });
+
+
 
 
