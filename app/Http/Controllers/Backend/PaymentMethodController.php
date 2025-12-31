@@ -4,13 +4,14 @@ namespace App\Http\Controllers\Backend;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 
 class PaymentMethodController extends Controller
 {
     /**
      * Get user's payment methods
      */
-    public function index(Request $request)
+    public function index(Request $request): JsonResponse
     {
         try {
             $user = $request->user();
@@ -48,7 +49,7 @@ class PaymentMethodController extends Controller
     /**
      * Add new payment method
      */
-    public function store(Request $request)
+    public function store(Request $request): JsonResponse
     {
         $request->validate([
             'payment_method' => 'required|string',
@@ -91,7 +92,7 @@ class PaymentMethodController extends Controller
     /**
      * Set default payment method
      */
-    public function setDefault(Request $request, $id)
+    public function setDefault(Request $request, $id): JsonResponse
     {
         try {
             $user = $request->user();
@@ -113,7 +114,7 @@ class PaymentMethodController extends Controller
     /**
      * Delete payment method
      */
-    public function destroy(Request $request, $id)
+    public function destroy(Request $request, $id): JsonResponse
     {
         try {
             $user = $request->user();

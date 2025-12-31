@@ -52,5 +52,8 @@ return [
         'client_secret' => env('GOOGLE_CLIENT_SECRET'),
         'redirect'      => '/api/auth/google/callback',
     ],
+    'stripe' => [
+        'secret'     => env('STRIPE_SECRET')
+    ],
 
 ];

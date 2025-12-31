@@ -6,11 +6,12 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Plan;
 use Illuminate\Support\Facades\Log;
-use Laravel\Cashier\Subscription;
+// use Laravel\Cashier\Subscription;
+use Illuminate\Http\JsonResponse;
 
 class SubscriptionController extends Controller
 {
-        public function show(Request $request)
+        public function show(Request $request): JsonResponse
         {
             try {
                 $user = $request->user();
@@ -55,11 +56,8 @@ class SubscriptionController extends Controller
             }
         } 
 
-        public function store(Request $request)
+        public function store(Request $request): JsonResponse
         {
-        
-
-            Log::info('Starting subscription creation', []);
 
         $request->validate([
             'plan_id' => 'required|exists:plans,id',    
@@ -79,9 +77,10 @@ class SubscriptionController extends Controller
             }
 
             if (!$user->hasStripeId()) {
-            $user->createAsStripeCustomer();
+               $user->createAsStripeCustomer();
             }
 
+            //  $user->createOrGetStripeCustomer();
             $paymentMethodExists = false;
             foreach ($user->paymentMethods() as $pm) {
                 if ($pm->id === $request->payment_method_id) {
@@ -89,7 +88,6 @@ class SubscriptionController extends Controller
                     break;
                 }
             }
-
 
                 if (!$paymentMethodExists) {
                 $user->addPaymentMethod($request->payment_method_id);
@@ -101,7 +99,7 @@ class SubscriptionController extends Controller
             // Create subscription
             $subscription = $user->newSubscription('default', $plan->stripe_price_id);
             
-            if ($plan->trial_days > 0) {
+            if ($plan->trial_days > 30) {
                 $subscription->trialDays($plan->trial_days);
             }
             
@@ -131,7 +129,7 @@ class SubscriptionController extends Controller
         }
     }
 
-    public function swap(Request $request)
+    public function swap(Request $request): JsonResponse
     {
         $request->validate([
             'plan_id' => 'required|exists:plans,id',
@@ -168,7 +166,7 @@ class SubscriptionController extends Controller
         }
     }
 
-     public function cancel(Request $request)
+     public function cancel(Request $request): JsonResponse
     {
         try {
             $user = $request->user();
@@ -200,7 +198,7 @@ class SubscriptionController extends Controller
         }
     }
 
-    public function resume(Request $request)
+    public function resume(Request $request): JsonResponse
     {
         try {
             $user = $request->user();
@@ -227,7 +225,7 @@ class SubscriptionController extends Controller
         }
     }
 
-    public function invoices(Request $request)
+    public function invoices(Request $request): JsonResponse
     {
         try {
             $user = $request->user();
@@ -262,7 +260,7 @@ class SubscriptionController extends Controller
         }
     }
 
-    public function invoice(Request $request, $id)
+    public function invoice(Request $request, $id): JsonResponse
     {
         try {
             $user = $request->user();
