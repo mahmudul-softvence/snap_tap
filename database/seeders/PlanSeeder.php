@@ -16,11 +16,13 @@ class PlanSeeder extends Seeder
         $plans = [
             [
                 'name' => 'Pro Plan',
-                'price' => 42.00,
+                'price' => 49.00,
                 'interval' => 'month',
                 'description' => 'Basic plan for individuals',
                 'features' => json_encode('Feature 1'),
                 'sort_order' => 1,
+                'stripe_product_id' => 'prod_ThNmWfI6hgs3nQ',
+                'stripe_price_id' => 'price_1Sjz0lLSyhijrF2j51nDpKV5'
             ],
         ];
 

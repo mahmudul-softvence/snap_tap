@@ -8,12 +8,12 @@ use App\Models\Plan;
 use Stripe\StripeClient;
 class PlanController extends Controller
 {
-    // protected $stripe;
+    protected $stripe;
 
-    // public function __construct()
-    // {
-    //     $this->stripe = new StripeClient(config('cashier.secret'));
-    // }
+    public function __construct()
+    {
+        $this->stripe = new StripeClient(config('cashier.secret'));
+    }
 
     
     // Get all active plans
