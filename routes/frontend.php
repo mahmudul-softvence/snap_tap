@@ -2,6 +2,9 @@
 
 use App\Http\Controllers\Frontend\Auth\RegisterController;
 use App\Http\Controllers\Frontend\Auth\SocialiteController;
+use App\Http\Controllers\Frontend\FacebookController;
+use App\Http\Controllers\Frontend\GmbController;
+use App\Http\Controllers\Frontend\GmbMockVersionController;
 use App\Http\Controllers\Frontend\QrController;
 use App\Http\Controllers\MessageTemplateController;
 use App\Http\Controllers\Frontend\UserProfileController;
@@ -52,17 +55,47 @@ Route::middleware('auth:sanctum')->group(function () {
 
 
 // Google Business Profile (GMB)
+// Route::get('/google/gmb/auth-url', [GmbController::class, 'authUrl']);
+// Route::get('/google/gmb/callback', [GmbController::class, 'callback']);
+
 // Route::middleware('auth:sanctum')->group(function () {
-
-    Route::get('/google/gmb/connect', [GoogleBusinessController::class, 'redirect']);
-    Route::get('/google/gmb/callback', [GoogleBusinessController::class, 'callback']);
-
-    Route::get('/business-accounts/{id}/reviews', [GoogleBusinessController::class, 'reviews']);
-    Route::post('/business-accounts/{id}/reviews/{reviewId}/reply', [GoogleBusinessController::class, 'reply']);
-
-    Route::post('/business-accounts/{id}/disconnect', [GoogleBusinessController::class, 'disconnect']);
+//     Route::get('/gmb/accounts', [GmbController::class, 'accounts']);
+//     Route::get('/gmb/locations/{account}', [GmbController::class, 'locations']);
+//     Route::get('/gmb/reviews/{location}', [GmbController::class, 'reviews']);
+//     Route::post('/gmb/reply', [GmbController::class, 'reply']);
 // });
 
+// Facebook
+Route::get('/facebook/auth-url', [FacebookController::class, 'authUrl']);
+Route::get('/facebook/callback', [FacebookController::class, 'callback']);
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/facebook/accounts/meta', [FacebookController::class, 'metaData']);
+    Route::get('/facebook/pages', [FacebookController::class, 'pages']);
+    Route::get('/facebook/reviews/{page}', [FacebookController::class, 'reviews']);
+    Route::post('/facebook/reply', [FacebookController::class, 'reply']);
+});
+
+
+
+
+Route::get('/google/gmb/auth-url', [GmbMockVersionController::class, 'authUrl']);
+Route::get('/google/gmb/callback', [GmbMockVersionController::class, 'callback']);
+
+// প্রোটেক্টেড রাউট (লগইন করা ইউজারদের জন্য)
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/gmb/accounts', [GmbMockVersionController::class, 'accounts']);
+
+    // {account} এর জায়গায় 'accounts/12345' এই ফরম্যাটে আইডি যাবে
+    Route::get('/gmb/locations/{account}', [GmbMockVersionController::class, 'locations'])
+        ->where('account', '.*'); // স্লাশ (/) সাপোর্ট করার জন্য ওয়াইল্ডকার্ড
+
+    // {location} এর জায়গায় 'locations/67890' এই ফরম্যাটে আইডি যাবে
+    Route::get('/gmb/reviews/{location}', [GmbMockVersionController::class, 'reviews'])
+        ->where('location', '.*');
+
+    Route::post('/gmb/reply', [GmbMockVersionController::class, 'reply']);
+});
 
 
 
