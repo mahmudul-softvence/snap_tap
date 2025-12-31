@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Frontend\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\BasicSetting;
 use App\Models\User;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Laravel\Socialite\Facades\Socialite;
 
@@ -50,7 +52,7 @@ class SocialiteController extends Controller
             $user = User::create([
                 'name' => $socialUser->getName() ?? $socialUser->getNickname(),
                 'email' => $socialUser->getEmail(),
-                'password' => bcrypt(Str::random(32)),
+                'password' => '',
                 'email_verified_at' => now(),
             ]);
 
@@ -64,6 +66,11 @@ class SocialiteController extends Controller
             'email_verified_at' => $user->email_verified_at ?? now(),
         ])->save();
 
+
+        BasicSetting::create([
+            'user_id' => $user->id
+        ]);
+
         $token = $user->createToken('social-login')->plainTextToken;
 
         return response()->json([
@@ -73,7 +80,6 @@ class SocialiteController extends Controller
             'role' => $user->getRoleNames(),
         ]);
     }
-
 
 
     protected function validateProvider(string $provider): void

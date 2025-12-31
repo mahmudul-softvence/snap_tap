@@ -16,7 +16,6 @@ class UserProfileController extends Controller
 {
     public function showProfile()
     {
-
         $user = User::with('businessProfile')->find(Auth::id());
 
         abort_if($user->id !== Auth::id(), 403, 'Unauthorized');

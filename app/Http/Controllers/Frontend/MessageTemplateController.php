@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Frontend;
 
+use App\Http\Controllers\Controller;
 use App\Models\MessageTemplate;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -26,6 +27,12 @@ class MessageTemplateController extends Controller
             'message' => 'required|string',
         ]);
 
+        if ($request->status === 'default') {
+            MessageTemplate::where('user_id', Auth::id())
+                ->where('status', 'default')
+                ->update(['status' => 'active']);
+        }
+
         $template = MessageTemplate::create([
             'user_id' => Auth::id(),
             'name'    => $request->name,
@@ -38,6 +45,7 @@ class MessageTemplateController extends Controller
             'data' => $template,
         ], 201);
     }
+
 
 
     public function show($id)
@@ -55,8 +63,7 @@ class MessageTemplateController extends Controller
 
     public function update(Request $request, $id)
     {
-
-        $messageTemplate = MessageTemplate::find($id);
+        $messageTemplate = MessageTemplate::findOrFail($id);
 
         $this->authorizeTemplate($messageTemplate);
 
@@ -66,6 +73,13 @@ class MessageTemplateController extends Controller
             'message' => 'required|string',
         ]);
 
+        if ($request->status === 'default') {
+            MessageTemplate::where('user_id', Auth::id())
+                ->where('id', '!=', $messageTemplate->id)
+                ->where('status', 'default')
+                ->update(['status' => 'active']);
+        }
+
         $messageTemplate->update($request->only('name', 'status', 'message'));
 
         return response()->json([
@@ -74,17 +88,45 @@ class MessageTemplateController extends Controller
         ]);
     }
 
+
     public function destroy($id)
     {
-        $messageTemplate = MessageTemplate::find($id);
+        $messageTemplate = MessageTemplate::findOrFail($id);
 
         $this->authorizeTemplate($messageTemplate);
+
+        if ($messageTemplate->status === 'default') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Default template cannot be deleted',
+            ], 403);
+        }
 
         $messageTemplate->delete();
 
         return response()->json([
             'success' => true,
             'message' => 'Template deleted successfully',
+        ]);
+    }
+
+
+    public function default_template()
+    {
+        $defaultTemplate = MessageTemplate::where('user_id', Auth::id())
+            ->where('status', 'default')
+            ->first();
+
+        if (!$defaultTemplate) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No default template found',
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $defaultTemplate,
         ]);
     }
 

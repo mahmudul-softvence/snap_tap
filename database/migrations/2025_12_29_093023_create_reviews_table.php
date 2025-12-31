@@ -11,12 +11,18 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('message_templates', function (Blueprint $table) {
+        Schema::create('reviews', function (Blueprint $table) {
             $table->id();
-            $table->string('name')->unique();
-            $table->enum('status', ['default', 'active', 'inactive'])->default('active');
-            $table->text('message');
+            $table->string('name');
+            $table->string('email');
+            $table->string('phone');
+            $table->string('status')->default('sent');
+            $table->longText('message');
+            $table->boolean('sent_sms');
+            $table->boolean('sent_email');
+            $table->integer('retries')->default(0);
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+            $table->string('unique_id')->unique();
             $table->timestamps();
         });
     }
@@ -26,6 +32,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('message_templates');
+        Schema::dropIfExists('reviews');
     }
 };

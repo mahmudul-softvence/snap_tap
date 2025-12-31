@@ -58,7 +58,6 @@ class User extends Authenticatable
         return $this->hasMany(Qr::class);
     }
 
-
     public function messageTemplates()
     {
         return $this->hasMany(MessageTemplate::class);
@@ -67,5 +66,15 @@ class User extends Authenticatable
     public function businessProfile()
     {
         return $this->hasOne(BusinessProfile::class, 'user_id', 'id');
+    }
+
+    public function reviews()
+    {
+        return $this->hasMany(Review::class);
+    }
+
+    public function basicSetting()
+    {
+        return $this->hasOne(BasicSetting::class);
     }
 }
