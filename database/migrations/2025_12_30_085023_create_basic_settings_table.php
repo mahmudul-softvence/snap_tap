@@ -13,9 +13,9 @@ return new class extends Migration
     {
         Schema::create('basic_settings', function (Blueprint $table) {
             $table->id();
-            $table->boolean('msg_after_checkin')->nullable()->default(1);
-            $table->boolean('next_message_time')->nullable()->default(5);
-            $table->boolean('re_try_time')->nullable()->default(5);
+            $table->integer('msg_after_checkin')->nullable()->default(1);
+            $table->integer('next_message_time')->nullable()->default(5);
+            $table->integer('re_try_time')->nullable()->default(5);
 
             $table->boolean('new_customer_review')->nullable()->default(false);
             $table->boolean('ai_reply')->nullable()->default(false);

@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('message_templates', function (Blueprint $table) {
             $table->id();
             $table->string('name')->unique();
+            $table->enum('provider', ['google', 'facebook']);
             $table->enum('status', ['default', 'active', 'inactive'])->default('active');
             $table->text('message');
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();

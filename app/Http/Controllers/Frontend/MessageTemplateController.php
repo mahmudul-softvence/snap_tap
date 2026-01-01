@@ -19,10 +19,14 @@ class MessageTemplateController extends Controller
         ]);
     }
 
+    /**
+     * Create Message Template
+     */
     public function create(Request $request)
     {
         $request->validate([
             'name'    => 'required|string|unique:message_templates,name,NULL,id,user_id,' . Auth::id(),
+            'provider' => 'required|in:facebook,google',
             'status' => 'required|in:default,active,inactive',
             'message' => 'required|string',
         ]);
@@ -33,12 +37,8 @@ class MessageTemplateController extends Controller
                 ->update(['status' => 'active']);
         }
 
-        $template = MessageTemplate::create([
-            'user_id' => Auth::id(),
-            'name'    => $request->name,
-            'status'  => $request->status,
-            'message' => $request->message,
-        ]);
+        $template = auth()->user()->messageTemplates()
+            ->create($request->only('name', 'status', 'message', 'provider'));
 
         return response()->json([
             'success' => true,
@@ -47,7 +47,9 @@ class MessageTemplateController extends Controller
     }
 
 
-
+    /**
+     * Show Message Template
+     */
     public function show($id)
     {
         $messageTemplate = MessageTemplate::find($id);
@@ -60,7 +62,9 @@ class MessageTemplateController extends Controller
         ]);
     }
 
-
+    /**
+     * Update Message Template
+     */
     public function update(Request $request, $id)
     {
         $messageTemplate = MessageTemplate::findOrFail($id);
@@ -69,6 +73,7 @@ class MessageTemplateController extends Controller
 
         $request->validate([
             'name'    => 'required|string|unique:message_templates,name,' . $messageTemplate->id . ',id,user_id,' . Auth::id(),
+            'provider' => 'required|in:facebook,google',
             'status' => 'required|in:default,active,inactive',
             'message' => 'required|string',
         ]);
@@ -80,7 +85,7 @@ class MessageTemplateController extends Controller
                 ->update(['status' => 'active']);
         }
 
-        $messageTemplate->update($request->only('name', 'status', 'message'));
+        $messageTemplate->update($request->only('name', 'status', 'message', 'provider'));
 
         return response()->json([
             'success' => true,
@@ -89,6 +94,9 @@ class MessageTemplateController extends Controller
     }
 
 
+    /**
+     * Delete message template
+     */
     public function destroy($id)
     {
         $messageTemplate = MessageTemplate::findOrFail($id);
@@ -110,12 +118,14 @@ class MessageTemplateController extends Controller
         ]);
     }
 
-
+    /**
+     * Get Default Message
+     */
     public function default_template()
     {
-        $defaultTemplate = MessageTemplate::where('user_id', Auth::id())
+        $defaultTemplate = auth()->user()->messageTemplates()
             ->where('status', 'default')
-            ->first();
+            ->firstOrFail();
 
         if (!$defaultTemplate) {
             return response()->json([
@@ -130,7 +140,9 @@ class MessageTemplateController extends Controller
         ]);
     }
 
-
+    /**
+     * Check User Permission
+     */
     private function authorizeTemplate(MessageTemplate $template)
     {
         abort_if($template->user_id !== Auth::id(), 403, 'Unauthorized');

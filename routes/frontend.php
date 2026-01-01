@@ -77,6 +77,6 @@ Route::middleware('auth:sanctum')->group(function () {
     // Basic Settings
     Route::controller(BasicSettingController::class)->group(function () {
         Route::get('settings', 'index');
-        Route::put('review_req/update/{id}', 'update');
+        Route::put('settings/update', 'update');
     });
 });
