@@ -8,6 +8,9 @@ use App\Models\Plan;
 use Illuminate\Support\Facades\Log;
 // use Laravel\Cashier\Subscription;
 use Illuminate\Http\JsonResponse;
+use Carbon\Carbon;
+use Stripe\Stripe;
+use Stripe\PaymentIntent;
 
 class SubscriptionController extends Controller
 {

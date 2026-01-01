@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon; 
 
 class Plan extends Model
 {
@@ -21,14 +22,45 @@ class Plan extends Model
         'description',
         'features',
         'sort_order',
-        'is_active'
+        'is_active',
+        'allow_trial',
+        'setup_fee',
+        'trial_type',
+        'auto_activate_after_trial'
     ];
 
     protected $casts = [
         'price' => 'decimal:2',
         'features' => 'array',
-        'is_active' => 'boolean'
+        'is_active' => 'boolean',
+        'trial_days' => 'integer',
+        'allow_trial' => 'boolean',
+        'auto_activate_after_trial' => 'boolean',
     ];
+
+    public function hasTrial(): bool
+    {
+        return $this->trial_days > 0 && $this->allow_trial;
+    }
+
+    public function isFreeTrial(): bool
+    {
+        return $this->hasTrial() && $this->trial_type === 'free';
+    }
+
+    public function hasSetupFee(): bool
+    {
+        return $this->hasTrial() && $this->setup_fee > 0;
+    }
+
+    public function getTrialEndDate($startDate = null)
+    {
+        $start = $startDate ? Carbon::parse($startDate) : now();
+        return $start->addDays($this->trial_days);
+    }
+
+
+
 
     public function scopeActive($query)
     {

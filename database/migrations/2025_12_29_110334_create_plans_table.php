@@ -14,8 +14,8 @@ return new class extends Migration
         Schema::create('plans', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->string('stripe_price_id')->unique()->nullable();
-            $table->string('stripe_product_id')->nullable();
+            $table->string('stripe_price_id')->unique();
+            $table->string('stripe_product_id');
             $table->decimal('price', 10, 2);
             $table->string('currency')->default('usd');
             $table->string('interval')->default('month'); 
