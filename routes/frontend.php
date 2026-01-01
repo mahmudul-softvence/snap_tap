@@ -49,53 +49,57 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::controller(UserProfileController::class)->group(function () {
         Route::get('user-profile/show', 'showProfile');
         Route::put('user-profile/update', 'update');
-   });
-
+    });
 });
 
+// -----------For Production Google Business Profile (GMB) connector route------------
 
-// Google Business Profile (GMB)
-// Route::get('/google/gmb/auth-url', [GmbController::class, 'authUrl']);
-// Route::get('/google/gmb/callback', [GmbController::class, 'callback']);
 
-// Route::middleware('auth:sanctum')->group(function () {
-//     Route::get('/gmb/accounts', [GmbController::class, 'accounts']);
-//     Route::get('/gmb/locations/{account}', [GmbController::class, 'locations']);
-//     Route::get('/gmb/reviews/{location}', [GmbController::class, 'reviews']);
-//     Route::post('/gmb/reply', [GmbController::class, 'reply']);
-// });
-
-// Facebook
-Route::get('/facebook/auth-url', [FacebookController::class, 'authUrl']);
-Route::get('/facebook/callback', [FacebookController::class, 'callback']);
+Route::get('/google/gmb/callback', [GmbController::class, 'callback']);
 
 Route::middleware('auth:sanctum')->group(function () {
-    Route::get('/facebook/accounts/meta', [FacebookController::class, 'metaData']);
+    Route::get('/google/gmb/auth-url', [GmbController::class, 'authUrl']);
+    Route::get('/gmb/accounts', [GmbController::class, 'accounts']);
+    Route::get('/gmb/locations/{account}', [GmbController::class, 'locations']);
+    Route::get('/gmb/reviews/{location}', [GmbController::class, 'reviews']);
+    Route::post('/gmb/reply', [GmbController::class, 'reply']);
+});
+// -------------------------------------------------------------------------------------
+
+/// fake GMB routes for testing (Mock Version)
+// Route::get('/google/gmb/auth-url', [GmbMockVersionController::class, 'authUrl']);
+// Route::get('/google/gmb/callback', [GmbMockVersionController::class, 'callback']);
+
+// Route::middleware('auth:sanctum')->group(function () {
+//     Route::get('/gmb/accounts', [GmbMockVersionController::class, 'accounts']);
+//     Route::get('/gmb/locations/{account}', [GmbMockVersionController::class, 'locations'])->where('account', '.*');
+//     Route::get('/gmb/reviews/{location}', [GmbMockVersionController::class, 'reviews'])->where('location', '.*');
+//     Route::post('/gmb/reply', [GmbMockVersionController::class, 'reply']);
+// });
+
+
+
+
+
+Route::get('/facebook/callback', [FacebookController::class, 'callback']);
+// Facebook
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/facebook/auth-url', [FacebookController::class, 'authUrl']);
+    Route::post('/facebook/connect-page', [FacebookController::class, 'connectPage']);
+    // Route::get('/facebook/accounts/meta', [FacebookController::class, 'metaData']);
     Route::get('/facebook/pages', [FacebookController::class, 'pages']);
     Route::get('/facebook/reviews/{page}', [FacebookController::class, 'reviews']);
     Route::post('/facebook/reply', [FacebookController::class, 'reply']);
 });
 
 
-
-
-Route::get('/google/gmb/auth-url', [GmbMockVersionController::class, 'authUrl']);
-Route::get('/google/gmb/callback', [GmbMockVersionController::class, 'callback']);
-
-// প্রোটেক্টেড রাউট (লগইন করা ইউজারদের জন্য)
-Route::middleware('auth:sanctum')->group(function () {
-    Route::get('/gmb/accounts', [GmbMockVersionController::class, 'accounts']);
-
-    // {account} এর জায়গায় 'accounts/12345' এই ফরম্যাটে আইডি যাবে
-    Route::get('/gmb/locations/{account}', [GmbMockVersionController::class, 'locations'])
-        ->where('account', '.*'); // স্লাশ (/) সাপোর্ট করার জন্য ওয়াইল্ডকার্ড
-
-    // {location} এর জায়গায় 'locations/67890' এই ফরম্যাটে আইডি যাবে
-    Route::get('/gmb/reviews/{location}', [GmbMockVersionController::class, 'reviews'])
-        ->where('location', '.*');
-
-    Route::post('/gmb/reply', [GmbMockVersionController::class, 'reply']);
-});
-
-
-
+// --------For Production Facebook page connector route---------------------------------
+// Route::middleware('auth:sanctum')->group(function () {
+//     Route::get('/facebook/auth-url', [FacebookController::class, 'authUrl']);
+//     Route::get('/facebook/callback', [FacebookController::class, 'callback']);
+//     Route::post('/facebook/connect-page', [FacebookController::class, 'connectPage']);
+//     Route::get('/facebook/pages', [FacebookController::class, 'pages']);
+//     Route::get('/facebook/reviews/{page}', [FacebookController::class, 'reviews']);
+//     Route::post('/facebook/reply', [FacebookController::class, 'reply']);
+// });
+// -------------------------------------------------------------------------------------
