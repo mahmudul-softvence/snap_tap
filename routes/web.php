@@ -4,9 +4,10 @@ use App\Http\Controllers\Update\SystemUpdateController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return response()->json([
-        'page' => 'home'
-    ]);
+    // return response()->json([
+    //     'page' => 'home'
+    // ]);
+    return view('frontend.index');
 });
 
 

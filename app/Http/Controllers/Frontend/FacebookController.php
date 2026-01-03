@@ -13,17 +13,18 @@ class FacebookController extends Controller
 {
     public function authUrl()
     {
-        // $scope = [
-        //     'pages_show_list',
-        //     'pages_read_user_content',
-        //     'pages_manage_engagement',
-        // ];
+        $scope = [
+            'pages_show_list',
+            'pages_read_user_content',
+            'pages_read_engagement',
+            'pages_manage_engagement',
+        ];
 
         $query = http_build_query([
             'client_id'     => config('services.facebook.client_id'),
             'redirect_uri'  => config('services.facebook.redirect'),
             'response_type' => 'code',
-            'scope'         => 'pages_show_list', // CHANGE: only valid scope
+            'scope'         => implode(',', $scope), // CHANGE: only valid scope
             'auth_type'     => 'rerequest',
         ]);
 
@@ -127,14 +128,58 @@ class FacebookController extends Controller
     }
 
 
+    // public function reviews($pageId)
+    // {
+    //     $account = $this->getPageAccount($pageId);
+
+    //     return Http::withToken($account->access_token)
+    //         ->get("https://graph.facebook.com/v17.0/{$pageId}/ratings")
+    //         ->json();
+    // }
+
     public function reviews($pageId)
     {
         $account = $this->getPageAccount($pageId);
 
-        return Http::withToken($account->access_token)
-            ->get("https://graph.facebook.com/v17.0/{$pageId}/ratings")
-            ->json();
+        if (!$account || !$account->access_token) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Page access token not found'
+            ], 400);
+        }
+
+        $allReviews = [];
+        $url = "https://graph.facebook.com/v17.0/{$pageId}/ratings";
+        $params = [
+            'fields' => 'id,created_time,recommendation_type,review_text,reviewer{name,id}',
+            'limit' => 25, // Number of reviews per page
+        ];
+
+        do {
+            $response = Http::withToken($account->access_token)
+                ->get($url, $params)
+                ->json();
+
+            if (!isset($response['data'])) {
+                break;
+            }
+
+            // Add current batch of reviews
+            $allReviews = array_merge($allReviews, $response['data']);
+
+            // Check for next page
+            $url = $response['paging']['next'] ?? null;
+
+            // Clear params after first call because 'next' URL already has them
+            $params = [];
+        } while ($url);
+
+        return response()->json([
+            'success' => true,
+            'reviews' => $allReviews
+        ]);
     }
+
 
     public function reply(Request $request)
     {
@@ -182,7 +227,7 @@ class FacebookController extends Controller
 
 
 
-// --------For Production Facebook page connector methods--------
+    // --------For Production Facebook page connector methods--------
     // public function authUrl()
     // {
     //     $scope = [
@@ -245,7 +290,7 @@ class FacebookController extends Controller
 
     //     return response()->json([
     //         'success' => true,
-    //         'pages' => collect($pages)->map(fn ($p) => [
+    //         'pages' => collect($pages)->map(fn($p) => [
     //             'id' => $p['id'],
     //             'name' => $p['name'],
     //             'category' => $p['category'] ?? null,
@@ -357,7 +402,7 @@ class FacebookController extends Controller
     // {
     //     return 'facebook_pages_' . auth()->id();
     // }
-// --------------------------------------------------------------
+    // --------------------------------------------------------------
 
 
 
