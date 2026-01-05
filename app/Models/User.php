@@ -58,7 +58,6 @@ class User extends Authenticatable
         return $this->hasMany(Qr::class);
     }
 
-
     public function messageTemplates()
     {
         return $this->hasMany(MessageTemplate::class);
@@ -80,10 +79,19 @@ class User extends Authenticatable
     {
         return $this->businessAccounts()->where('provider', 'google')->first();
     }
-    
+
     // Helper for Facebook (future)
     public function facebookBusinessAccount()
     {
         return $this->businessAccounts()->where('provider', 'facebook')->first();
+    }
+    public function reviews()
+    {
+        return $this->hasMany(Review::class);
+    }
+
+    public function basicSetting()
+    {
+        return $this->hasOne(BasicSetting::class);
     }
 }

@@ -9,12 +9,14 @@ class MessageTemplate extends Model
     protected $fillable = [
         'user_id',
         'name',
+        'provider',
         'status',
         'message',
     ];
 
     protected $casts = [
         'status' => 'string',
+        'provider' => 'string'
     ];
 
     public function user()
