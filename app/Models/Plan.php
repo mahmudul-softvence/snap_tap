@@ -52,7 +52,7 @@ class Plan extends Model
     {
         return $this->hasTrial() && $this->setup_fee > 0;
     }
-
+    
     public function getTrialEndDate($startDate = null)
     {
         $start = $startDate ? Carbon::parse($startDate) : now();

@@ -20,7 +20,7 @@ return new class extends Migration
             $table->string('currency')->default('usd');
             $table->string('interval')->default('month'); 
             $table->integer('interval_count')->default(1);
-            $table->integer('trial_days')->default(0);
+            $table->integer('trial_days')->default(5);
             $table->text('description')->nullable();
             $table->json('features')->nullable();
             $table->integer('sort_order')->default(0);
