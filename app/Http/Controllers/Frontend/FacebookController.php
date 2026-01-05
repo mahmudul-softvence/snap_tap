@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\UserBusinessAccount;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
@@ -24,7 +25,7 @@ class FacebookController extends Controller
             'client_id'     => config('services.facebook.client_id'),
             'redirect_uri'  => config('services.facebook.redirect'),
             'response_type' => 'code',
-            'scope'         => implode(',', $scope), // CHANGE: only valid scope
+            'scope'         => implode(',', $scope),
             'auth_type'     => 'rerequest',
         ]);
 
@@ -95,9 +96,9 @@ class FacebookController extends Controller
                 'provider_account_id' => $request->page_id,
             ],
             [
-                'user_id' => auth()->id(), //  CHANGE: auth()->id() use when production
+                'user_id' => auth()->id(),
                 'business_name' => $request->page_name,
-                'access_token' => $request->page_token, // page access token
+                'access_token' => $request->page_token,
                 'token_expires_at' => now()->addDays(60),
                 'status' => 'connected',
                 'meta_data' => [
@@ -116,7 +117,7 @@ class FacebookController extends Controller
 
     public function pages()
     {
-        $accounts = UserBusinessAccount::where('user_id', auth()->id()) // auth()->id()
+        $accounts = UserBusinessAccount::where('user_id', auth()->id())
             ->where('provider', 'facebook')
             ->where('status', 'connected')
             ->get();
@@ -127,59 +128,13 @@ class FacebookController extends Controller
         ]);
     }
 
-
-    // public function reviews($pageId)
-    // {
-    //     $account = $this->getPageAccount($pageId);
-
-    //     return Http::withToken($account->access_token)
-    //         ->get("https://graph.facebook.com/v17.0/{$pageId}/ratings")
-    //         ->json();
-    // }
-
     public function reviews($pageId)
     {
         $account = $this->getPageAccount($pageId);
 
-        if (!$account || !$account->access_token) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Page access token not found'
-            ], 400);
-        }
-
-        $allReviews = [];
-        $url = "https://graph.facebook.com/v17.0/{$pageId}/ratings";
-        $params = [
-            'fields' => 'id,created_time,recommendation_type,review_text,reviewer{name,id}',
-            'limit' => 25, // Number of reviews per page
-        ];
-
-        do {
-            $response = Http::withToken($account->access_token)
-                ->get($url, $params)
-                ->json();
-
-            if (!isset($response['data'])) {
-                break;
-            }
-
-            // Add current batch of reviews
-            $allReviews = array_merge($allReviews, $response['data']);
-
-            // Check for next page
-            $url = $response['paging']['next'] ?? null;
-
-            // Clear params after first call because 'next' URL already has them
-            $params = [];
-        } while ($url);
-
-        return response()->json([
-            'success' => true,
-            'reviews' => $allReviews
-        ]);
+        return Http::get("https://graph.facebook.com/v24.0/{$pageId}/ratings?fields=reviewer,rating,review_text,created_time,recommendation_type,open_graph_story&access_token={$account->access_token}")
+            ->json();
     }
-
 
     public function reply(Request $request)
     {
@@ -211,7 +166,7 @@ class FacebookController extends Controller
 
     private function getPageAccount($pageId)
     {
-        $account = UserBusinessAccount::where('user_id', auth()->id()) // auth()->id()
+        $account = UserBusinessAccount::where('user_id', auth()->id())
             ->where('provider', 'facebook')
             ->where('provider_account_id', $pageId)
             ->where('status', 'connected')
@@ -223,6 +178,16 @@ class FacebookController extends Controller
 
         return $account;
     }
+
+
+
+
+
+
+
+
+
+
 
 
 
