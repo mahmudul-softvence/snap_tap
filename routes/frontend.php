@@ -111,27 +111,12 @@ Route::middleware('auth:sanctum')->group(function () {
 
 
 
-
-
 Route::get('/facebook/callback', [FacebookController::class, 'callback']);
 // Facebook
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/facebook/auth-url', [FacebookController::class, 'authUrl']);
     Route::post('/facebook/connect-page', [FacebookController::class, 'connectPage']);
-    // Route::get('/facebook/accounts/meta', [FacebookController::class, 'metaData']);
     Route::get('/facebook/pages', [FacebookController::class, 'pages']);
     Route::get('/facebook/reviews/{page}', [FacebookController::class, 'reviews']);
     Route::post('/facebook/reply', [FacebookController::class, 'reply']);
 });
-
-
-// --------For Production Facebook page connector route---------------------------------
-// Route::middleware('auth:sanctum')->group(function () {
-//     Route::get('/facebook/auth-url', [FacebookController::class, 'authUrl']);
-//     Route::get('/facebook/callback', [FacebookController::class, 'callback']);
-//     Route::post('/facebook/connect-page', [FacebookController::class, 'connectPage']);
-//     Route::get('/facebook/pages', [FacebookController::class, 'pages']);
-//     Route::get('/facebook/reviews/{page}', [FacebookController::class, 'reviews']);
-//     Route::post('/facebook/reply', [FacebookController::class, 'reply']);
-// });
-// -------------------------------------------------------------------------------------
