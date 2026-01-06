@@ -12,6 +12,7 @@ use App\Http\Controllers\Frontend\QrController;
 use App\Http\Controllers\Frontend\ReviewReqController;
 use App\Http\Controllers\Frontend\UserProfileController;
 use App\Http\Controllers\Frontend\GoogleBusinessController;
+use App\Http\Controllers\Frontend\ReviewController;
 use Illuminate\Support\Facades\Route;
 
 
@@ -120,3 +121,16 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/facebook/reviews/{page}', [FacebookController::class, 'reviews']);
     Route::post('/facebook/reply', [FacebookController::class, 'reply']);
 });
+
+
+Route::middleware('auth:sanctum')->group(function () {
+
+    // Review List + Filters
+    Route::get('/reviews', [ReviewController::class, 'index']);
+
+    // Reply to Review
+    Route::post('/reviews/reply', [ReviewController::class, 'reply']);
+    Route::delete('/reviews/reply', [ReviewController::class, 'deleteReply']);
+
+});
+
