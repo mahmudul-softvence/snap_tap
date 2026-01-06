@@ -19,11 +19,12 @@ class RegisterController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
+
     public function register(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
             'name' => 'required',
-            'email' => 'required|email',
+            'email' =>  'required|email|unique:users,email',
             'password' => 'required',
             'c_password' => 'required|same:password',
         ]);
@@ -40,10 +41,7 @@ class RegisterController extends Controller
         $input['password'] = bcrypt($input['password']);
         $user = User::create($input);
         $user->assignRole('user');
-
-        BasicSetting::create([
-            'user_id' => $user->id
-        ]);
+        $user->basicSetting()->create();
 
         $token = $user->createToken('MyApp')->plainTextToken;
 
@@ -96,7 +94,6 @@ class RegisterController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-
 
     public function logout(Request $request): JsonResponse
     {
