@@ -53,7 +53,8 @@ return [
         'redirect'      => '/api/auth/google/callback',
     ],
     'stripe' => [
-        'secret'     => env('STRIPE_SECRET')
+        'secret'     => env('STRIPE_SECRET'),
+        'webhook_secret'     => env('STRIPE_WEBHOOK_SECRET')
     ],
 
 ];

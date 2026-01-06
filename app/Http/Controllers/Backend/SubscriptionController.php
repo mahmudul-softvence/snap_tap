@@ -218,21 +218,34 @@ class SubscriptionController extends Controller
         
         // Payment method is now attached and verified
         // Set as default
-        $user->addPaymentMethod($paymentMethodId);
-        $user->updateDefaultPaymentMethod($paymentMethodId);
+        // $user->addPaymentMethod($paymentMethodId);
+        // $user->updateDefaultPaymentMethod($paymentMethodId);
         
         // Create subscription with trial
-        $subscription = $user->newSubscription('default', $plan->stripe_price_id)
-            ->trialDays($plan->trial_days)->create();
+        // $subscription = $user->newSubscription('default', $plan->stripe_price_id)
+        //     ->trialDays($plan->trial_days)->create($paymentMethodId);
         
-        $subscription->update([
-            'trial_type' => 'free',
-            'trial_metadata' => [
-                'plan_id' => $plan->id,
+        // $subscription->update([
+        //     'trial_type' => 'free',
+        //     'trial_metadata' => [
+        //         'plan_id' => $plan->id,
+        //         'started_at' => now()->toISOString(),
+        //         'ends_at' =>  $subscription->trial_ends_at?->toISOString()
+        //     ]
+        // ]);
+
+        $trialEndTime = now()->addMinutes(8);
+
+        // 2. Pass the variable into both the trial logic and the metadata
+        $subscription = $user->newSubscription('default', $plan->stripe_price_id)
+            ->trialUntil($trialEndTime)
+            ->withMetadata([
+                'plan_id'    => $plan->id,
                 'started_at' => now()->toISOString(),
-                'ends_at' =>  $subscription->trial_ends_at?->toISOString()
-            ]
-        ]);
+                'trial_type' => 'free',
+                'ends_at'    => $trialEndTime->toISOString(), 
+            ])
+        ->create($paymentMethodId);
 
         return response()->json([
             'success' => true,
