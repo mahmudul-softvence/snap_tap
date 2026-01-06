@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Plan;
 use Stripe\StripeClient;
+
 class PlanController extends Controller
 {
     protected $stripe;
@@ -15,14 +16,14 @@ class PlanController extends Controller
         $this->stripe = new StripeClient(config('cashier.secret'));
     }
 
-    
+
     // Get all active plans
-     
+
     public function index()
     {
         try {
             $plans = Plan::active()->ordered()->get();
-            
+
             return response()->json([
                 'success' => true,
                 'data' => $plans
@@ -36,22 +37,22 @@ class PlanController extends Controller
         }
     }
 
-    
+
     // Sync plans from Stripe (Admin function)
-     
+
     public function syncFromStripe()
     {
         try {
             // Fetch products from Stripe
             $products = $this->stripe->products->all(['active' => true]);
-            
+
             foreach ($products->data as $product) {
                 // Get prices for this product
                 $prices = $this->stripe->prices->all([
                     'product' => $product->id,
                     'active' => true
                 ]);
-                
+
                 foreach ($prices->data as $price) {
                     Plan::updateOrCreate(
                         ['stripe_price_id' => $price->id],
@@ -68,7 +69,7 @@ class PlanController extends Controller
                     );
                 }
             }
-            
+
             return response()->json([
                 'success' => true,
                 'message' => 'Plans synced successfully'
