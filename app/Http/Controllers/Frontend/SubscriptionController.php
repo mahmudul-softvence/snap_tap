@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Backend;
+namespace App\Http\Controllers\Frontend;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
@@ -18,111 +18,109 @@ use Laravel\Cashier\Subscription;
 
 class SubscriptionController extends Controller
 {
-    
 
-        public function show(Request $request): JsonResponse
-        {
-            try {
-                $user = $request->user();
-                
-                $subscription = $user->subscription('default');
-                
-                if (!$subscription) {
-                    return response()->json([
-                        'success' => true,
-                        'data' => null,
-                        'message' => 'No active subscription'
-                    ]);
-                }
-                
-                $data = [
-                    'id' => $subscription->id,
-                    'name' => $subscription->name,
-                    'stripe_id' => $subscription->stripe_id,
-                    'stripe_status' => $subscription->stripe_status,
-                    'stripe_price' => $subscription->stripe_price,
-                    'quantity' => $subscription->quantity,
-                    'trial_ends_at' => $subscription->trial_ends_at,
-                    'ends_at' => $subscription->ends_at,
-                    'created_at' => $subscription->created_at,
-                    'updated_at' => $subscription->updated_at,
-                    'on_trial' => $subscription->onTrial(),
-                    'canceled' => $subscription->canceled(),
-                    'on_grace_period' => $subscription->onGracePeriod(),
-                    'active' => $subscription->active(),
-                ];
-                
-                return response()->json([
-                    'success' => true,
-                    'data' => $data
-                ]);
-            } catch (\Exception $e) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Failed to fetch subscription',
-                    'error' => $e->getMessage()
-                ], 500);
-            }
-        } 
-
-        public function store(Request $request): JsonResponse
-        {
-
-        $request->validate([
-            'plan_id' => 'required|exists:plans,id',    
-            'payment_method' => 'required|string',
-        ]);
-        
+    public function show(Request $request): JsonResponse
+    {
         try {
             $user = $request->user();
-            $plan = Plan::findOrFail($request->plan_id);
             
-            if ($user->subscribed('default')) {
+            $subscription = $user->subscription('default');
+            
+            if (!$subscription) {
                 return response()->json([
-                    'success' => false,
-                    'message' => 'You already have an active subscription'
-                ], 400);
-            }
-
-            if (!$user->hasStripeId()) {
-               $user->createAsStripeCustomer();
-            }
-
-            $paymentMethodExists = false;
-            foreach ($user->paymentMethods() as $pm) {
-                if ($pm->id === $request->payment_method_id) {
-                    $paymentMethodExists = true;
-                    break;
-                }
-            }
-                if (!$paymentMethodExists) {
-                $user->addPaymentMethod($request->payment_method_id);
+                    'success' => true,
+                    'data' => null,
+                    'message' => 'No active subscription'
+                ]);
             }
             
-            $user->updateDefaultPaymentMethod($request->payment_method);
-            
-            $subscription = $user->newSubscription('default', $plan->stripe_price_id);
-            
-            if ($plan->trial_days > 0) {
-                $subscription->trialDays($plan->trial_days);
-            }
-            
-            $subscription->create($request->payment_method);
-
-            $user->refresh();
-
-            $subscriptionData = $user->subscription('default');
+            $data = [
+                'id' => $subscription->id,
+                'name' => $subscription->name,
+                'stripe_id' => $subscription->stripe_id,
+                'stripe_status' => $subscription->stripe_status,
+                'stripe_price' => $subscription->stripe_price,
+                'price' => $subscription->price,
+                'quantity' => $subscription->quantity,
+                'trial_started_at' => $subscription->trial_started_at,
+                'trial_ends_at' => $subscription->trial_ends_at,
+                'created_at' => $subscription->created_at,
+                'updated_at' => $subscription->updated_at,
+                'on_trial' => $subscription->onTrial(),
+                'canceled' => $subscription->canceled(),
+                'on_grace_period' => $subscription->onGracePeriod(),
+                'active' => $subscription->active(),
+            ];
             
             return response()->json([
                 'success' => true,
-                'message' => 'Subscription created successfully',
-                'data' => [
-                    'subscription' => $subscriptionData,
-                    'plan' => $plan,
-                    'payment_method_used' => $user->defaultPaymentMethod()?->id
-                ]
+                'data' => $data
             ]);
         } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch subscription',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    } 
+
+    public function store(Request $request): JsonResponse
+    {
+
+    $request->validate([
+        'plan_id' => 'required|exists:plans,id',    
+        'payment_method' => 'required|string',
+    ]);
+    
+    try {
+        $user = $request->user();
+        $plan = Plan::findOrFail($request->plan_id);
+        
+        if ($user->subscribed('default')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You already have an active subscription'
+            ], 400);
+        }
+
+        if (!$user->hasStripeId()) {
+            $user->createAsStripeCustomer();
+        }
+
+        $paymentMethodExists = false;
+        foreach ($user->paymentMethods() as $pm) {
+            if ($pm->id === $request->payment_method_id) {
+                $paymentMethodExists = true;
+                break;
+            }
+        }
+            if (!$paymentMethodExists) {
+            $user->addPaymentMethod($request->payment_method_id);
+        }
+        
+        $user->updateDefaultPaymentMethod($request->payment_method);
+        
+        $subscription = $user->newSubscription('default', $plan->stripe_price_id);
+        
+        if ($plan->trial_days > 0) {
+            $subscription->trialDays($plan->trial_days);
+        }
+        
+        $subscription->create($request->payment_method);
+        $user->refresh();
+        $subscriptionData = $user->subscription('default');
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Subscription created successfully',
+            'data' => [
+                'subscription' => $subscriptionData,
+                'plan' => $plan,
+                'payment_method_used' => $user->defaultPaymentMethod()?->id
+            ]
+        ]);
+     } catch (\Exception $e) {
             Log::error('Subscription creation failed: ' . $e->getMessage());
             
             return response()->json([
@@ -163,11 +161,6 @@ class SubscriptionController extends Controller
                 $user->createAsStripeCustomer();
             }
             
-            if ($plan->hasSetupFee()) {
-                return $this->processTrialWithSetupFee($user, $plan, $request->payment_method_id);
-            }
-            
-            // For completely free trial (no charge at all)
             return $this->processFreeTrial($user, $plan, $request->payment_method_id);
             
         } catch (\Exception $e) {
@@ -180,12 +173,9 @@ class SubscriptionController extends Controller
         }
     }
 
-    /**
-     * Process completely free trial
-     */
+    
     private function processFreeTrial($user, $plan, $paymentMethodId)
     {
-        // Create SetupIntent to validate card without charging
         $setupIntent = $user->createSetupIntent([
             'payment_method' => $paymentMethodId,
             'confirm' => true,
@@ -219,34 +209,21 @@ class SubscriptionController extends Controller
             throw new \Exception('Card verification failed');
         }
         
-        
         $user->addPaymentMethod($paymentMethodId);
         $user->updateDefaultPaymentMethod($paymentMethodId);
-        
         
         $subscription = $user->newSubscription('default', $plan->stripe_price_id)
             ->trialDays($plan->trial_days)->create($paymentMethodId);
         
         $subscription->update([
             'trial_type' => 'free',
+            'trial_started_at' => now(),
             'trial_metadata' => [
                 'plan_id' => $plan->id,
                 'started_at' => now()->toISOString(),
                 'ends_at' =>  $subscription->trial_ends_at?->toISOString()
             ]
         ]);
-
-        // $trialEndTime = now()->addMinutes(5);
-
-        // // 2. Pass the variable into both the trial logic and the metadata
-        // $subscription = $user->newSubscription('default', $plan->stripe_price_id)
-        //     ->trialUntil($trialEndTime)
-        //     ->withMetadata([
-        //         'plan_id'    => $plan->id,
-        //         'started_at' => now()->toISOString(),
-        //         'trial_type' => 'free', 
-        //     ])
-        // ->create($paymentMethodId);
 
         return response()->json([
             'success' => true,
@@ -266,107 +243,12 @@ class SubscriptionController extends Controller
         ]);
     }
     
-    /**
-     * Process trial with setup fee
-     */
-    private function processTrialWithSetupFee($user, $plan, $paymentMethodId)
-    {
-        // Charge setup fee immediately
-        $setupFeeInCents = $plan->setup_fee * 100;
-        
-        // Create PaymentIntent for setup fee
-        $paymentIntent = PaymentIntent::create([
-            'amount' => $setupFeeInCents,
-            'currency' => strtolower($plan->currency),
-            'customer' => $user->stripe_id,
-            'payment_method' => $paymentMethodId,
-            'off_session' => false,
-            'confirm' => true,
-            'description' => "Setup fee for {$plan->name} trial",
-            'metadata' => [
-                'plan_id' => $plan->id,
-                'type' => 'trial_setup_fee',
-                'trial_days' => $plan->trial_days,
-            ]
-        ]);
-        
-        // Handle 3D Secure if required
-        if ($paymentIntent->status === 'requires_action') {
-            return response()->json([
-                'success' => true,
-                'requires_action' => true,
-                'flow' => 'trial_with_setup_fee',
-                'message' => 'Payment authentication required for setup fee',
-                'data' => [
-                    'client_secret' => $paymentIntent->client_secret,
-                    'payment_intent_id' => $paymentIntent->id,
-                    'amount' => $plan->setup_fee,
-                    'currency' => $plan->currency,
-                ]
-            ]);
-        }
-        
-        if ($paymentIntent->status !== 'succeeded') {
-            throw new \Exception('Setup fee payment failed');
-        }
-        
-        // Payment succeeded, attach payment method
-        $user->addPaymentMethod($paymentMethodId);
-        $user->updateDefaultPaymentMethod($paymentMethodId);
-        
-        // Create subscription with trial
-        $subscription = $user->newSubscription('default', $plan->stripe_price_id)
-            ->trialDays($plan->trial_days)
-            ->create(null, [
-                'payment_behavior' => 'default_incomplete',
-                'expand' => ['latest_invoice.payment_intent']
-            ]);
-        
-        // Save trial metadata with setup fee info
-        $dbSubscription = $user->subscription('default');
-        $dbSubscription->update([
-            'trial_type' => 'setup_fee',
-            'trial_amount_paid' => $plan->setup_fee,
-            'trial_started_at' => now(),
-            'trial_ended_at' => now()->addDays($plan->trial_days),
-            'trial_metadata' => [
-                'plan_id' => $plan->id,
-                'setup_fee_paid' => $plan->setup_fee,
-                'setup_fee_payment_intent' => $paymentIntent->id,
-                'started_at' => now()->toISOString(),
-                'ends_at' => now()->addDays($plan->trial_days)->toISOString(),
-            ]
-        ]);
-        
-        return response()->json([
-            'success' => true,
-            'message' => 'Trial started with setup fee!',
-            'data' => [
-                'subscription' => $subscription,
-                'plan' => $plan,
-                'trial' => [
-                    'type' => 'setup_fee',
-                    'days' => $plan->trial_days,
-                    'setup_fee_paid' => $plan->setup_fee,
-                    'setup_fee_payment_id' => $paymentIntent->id,
-                    'start_date' => now()->format('Y-m-d'),
-                    'end_date' => now()->addDays($plan->trial_days)->format('Y-m-d'),
-                    'next_payment_date' => now()->addDays($plan->trial_days)->format('Y-m-d'),
-                    'next_payment_amount' => $plan->price,
-                ],
-                'receipt' => [
-                    'amount' => $plan->setup_fee,
-                    'currency' => $plan->currency,
-                    'receipt_url' => $paymentIntent->charges->data[0]->receipt_url ?? null,
-                ]
-            ]
-        ]);
-    }
 
     public function convertTrialToPaid(Request $request)
     {
         try {
             $user = $request->user();
+            $plan = Plan::findOrFail($request->plan_id);
 
             if (!$user->subscribed('default')) {
                 return response()->json([
@@ -390,6 +272,7 @@ class SubscriptionController extends Controller
             $subscription->refresh();
 
             $subscription->update([
+                'price' => $plan->price,
                 'trial_ends_at' => now(),
                 'trial_converted' => true,
                 'trial_metadata->converted_at' => now()->toISOString(),

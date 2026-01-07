@@ -8,8 +8,6 @@ Route::get('/user', function (Request $request) {
 })->middleware('auth:sanctum');
 
 
-require __DIR__ . '/payment.php';
-require __DIR__ . '/subscription.php';
 require __DIR__ . '/frontend.php';
 
 

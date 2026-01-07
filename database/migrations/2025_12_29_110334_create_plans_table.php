@@ -22,6 +22,10 @@ return new class extends Migration
             $table->integer('interval_count')->default(1);
             $table->integer('trial_days')->default(30);
             $table->text('description')->nullable();
+            $table->boolean('allow_trial')->default(true);
+            $table->decimal('setup_fee', 10, 2)->nullable()->comment('One-time fee for trial plans');
+            $table->string('trial_type')->default('free')->comment('free, paid, setup_fee');
+            $table->boolean('auto_activate_after_trial')->default(true);
             $table->json('features')->nullable();
             $table->integer('sort_order')->default(0);
             $table->boolean('is_active')->default(true);
