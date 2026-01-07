@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Frontend;
 
 use App\Http\Controllers\Controller;
+use App\Models\ReviewReply;
 use App\Models\UserBusinessAccount;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -20,9 +21,10 @@ class ReviewController extends Controller
         $search   = strtolower($request->query('search', ''));      // search by name or comment
         $sort     = strtolower($request->query('sort', 'latest'));  // latest / oldest / az
         $limit    = intval($request->query('limit', 10));
+        $replyTypeFilter = $request->query('reply_type');           // ai_reply / manual_reply
 
+        // ====================== Facebook ======================
         if ($platform === 'facebook' || $platform === 'both') {
-
             $facebookPages = UserBusinessAccount::where('user_id', auth()->id())
                 ->where('provider', 'facebook')
                 ->where('status', 'connected')
@@ -33,27 +35,20 @@ class ReviewController extends Controller
                 $pageInfo = Http::withToken($page->access_token)
                     ->get("https://graph.facebook.com/v24.0/{$page->provider_account_id}", [
                         'fields' => 'name,picture.type(square)',
-                    ])
-                    ->json();
+                    ])->json();
 
                 $pageName   = $pageInfo['name'] ?? 'My Facebook Page';
-                $pageAvatar = $pageInfo['picture']['data']['url']
-                    ?? 'https://ui-avatars.com/api/?name=' . urlencode($pageName);
-
+                $pageAvatar = $pageInfo['picture']['data']['url'] ?? 'https://ui-avatars.com/api/?name=' . urlencode($pageName);
 
                 $response = Http::get(
                     "https://graph.facebook.com/v24.0/{$page->provider_account_id}/ratings",
                     [
-                        'fields' => 'reviewer,review_text,created_time,recommendation_type,
-                        open_graph_story{comments.limit(25){id,from,message,created_time,
-                        comments.limit(25){id,from,message,created_time}}}',
+                        'fields' => 'reviewer,review_text,created_time,recommendation_type,open_graph_story{comments.limit(25){id,from,message,created_time}}',
                         'access_token' => $page->access_token,
                     ]
                 )->json();
 
                 foreach ($response['data'] ?? [] as $review) {
-
-
 
                     $pageReplies = [];
 
@@ -62,18 +57,13 @@ class ReviewController extends Controller
 
                             if (($comment['from']['id'] ?? null) == $page->provider_account_id) {
 
-                                $childReplies = [];
+                                $dbReply = ReviewReply::where('review_id', $review['open_graph_story']['id'])
+                                    ->where('page_id', $page->provider_account_id)
+                                    ->where('comment', $comment['message'] ?? '')
+                                    ->first();
 
-                                if (!empty($comment['comments']['data'])) {
-                                    foreach ($comment['comments']['data'] as $child) {
-                                        $childReplies[] = [
-                                            'reply_id'     => $child['id'],
-                                            'reply_text'   => $child['message'] ?? '',
-                                            'created_time' => Carbon::parse($child['created_time'] ?? now())->format('Y-m-d H:i:s'),
-                                            'replier_name' => $child['from']['name'] ?? 'Facebook User',
-                                            'replier_avatar' => 'https://ui-avatars.com/api/?name=' . urlencode($child['from']['name'] ?? 'User')
-                                        ];
-                                    }
+                                if ($replyTypeFilter && (!isset($dbReply) || $dbReply->reply_type !== $replyTypeFilter)) {
+                                    continue;
                                 }
 
                                 $pageReplies[] = [
@@ -82,7 +72,7 @@ class ReviewController extends Controller
                                     'created_time' => Carbon::parse($comment['created_time'] ?? now())->format('Y-m-d H:i:s'),
                                     'replier_name' => $pageName,
                                     'replier_avatar' => $pageAvatar,
-                                    'replies' => $childReplies,
+                                    'reply_type' => $dbReply->reply_type ?? null,
                                 ];
                             }
                         }
@@ -93,30 +83,22 @@ class ReviewController extends Controller
 
                     $reviews->push([
                         'provider' => 'facebook',
-
-                        'review_id'   => $review['open_graph_story']['id'] ?? null,
-                        'page_id'     => $page->provider_account_id,
+                        'review_id' => $review['open_graph_story']['id'] ?? null,
+                        'page_id' => $page->provider_account_id,
                         'review_text' => $review['review_text'] ?? '',
-                        'rating'      => $rating,
+                        'rating' => $rating,
                         'recommendation_type' => $review['recommendation_type'] ?? 'positive',
-
-                        'reviewer_name'   => $reviewerName,
-                        'reviewer_avatar' =>
-                        'https://ui-avatars.com/api/?name=' .
-                            urlencode($reviewerName) .
-                            '&background=0d6efd&color=fff',
-
-                        'created_time' => Carbon::parse($review['created_time'] ?? now())
-                            ->format('Y-m-d H:i:s'),
-
+                        'reviewer_name' => $reviewerName,
+                        'reviewer_avatar' => 'https://ui-avatars.com/api/?name=' . urlencode($reviewerName) . '&background=0d6efd&color=fff',
+                        'created_time' => Carbon::parse($review['created_time'] ?? now())->format('Y-m-d H:i:s'),
                         'reply_status' => count($pageReplies) ? 'replied' : 'pending',
-                        'replies'      => $pageReplies,
+                        'replies' => $pageReplies,
                     ]);
                 }
             }
         }
 
-
+        // ====================== Google ======================
         if ($platform === 'google' || $platform === 'both') {
             $googleAccounts = UserBusinessAccount::where('user_id', auth()->id())
                 ->where('provider', 'google')
@@ -130,7 +112,15 @@ class ReviewController extends Controller
 
                 foreach ($response['reviews'] ?? [] as $review) {
                     $reviewerName = $review['reviewer']['displayName'] ?? 'Google User';
-                    $replyText   = $review['reviewReply']['comment'] ?? null;
+                    $replyText = $review['reviewReply']['comment'] ?? null;
+
+                    $dbReply = ReviewReply::where('review_id', $review['name'] ?? '')
+                        ->where('page_id', $account->provider_account_id)
+                        ->first();
+
+                    if ($replyTypeFilter && (!isset($dbReply) || $dbReply->reply_type !== $replyTypeFilter)) {
+                        continue; // skip
+                    }
 
                     $reviews->push([
                         'provider' => 'google',
@@ -144,16 +134,14 @@ class ReviewController extends Controller
                         'created_time' => isset($review['createTime']) ? Carbon::parse($review['createTime'])->format('Y-m-d H:i:s') : now()->format('Y-m-d H:i:s'),
                         'reply_status' => $replyText ? 'replied' : 'pending',
                         'reply_text' => $replyText,
+                        'reply_type' => $dbReply->reply_type ?? null,
                     ]);
                 }
             }
         }
 
         if ($search) {
-            $reviews = $reviews->filter(function ($item) use ($search) {
-                return str_contains(strtolower($item['review_text']), $search)
-                    || str_contains(strtolower($item['reviewer_name']), $search);
-            });
+            $reviews = $reviews->filter(fn($item) => str_contains(strtolower($item['review_text']), $search) || str_contains(strtolower($item['reviewer_name']), $search));
         }
 
         if ($status === 'replied') {
@@ -197,13 +185,15 @@ class ReviewController extends Controller
             'page_id' => 'required|string',
             'comment' => 'required|string|max:4000',
             'parent_comment_id' => 'nullable|string',
+            'reply_type' => 'nullable|in:ai_reply,manual_reply',
         ]);
 
-        $provider = $request->provider;
-        $reviewId = $request->review_id;
-        $pageId   = $request->page_id;
-        $comment  = $request->comment;
-        $parentCommentId = $request->parent_comment_id ?? null;
+        $provider  = $request->provider;
+        $reviewId  = $request->review_id;
+        $pageId    = $request->page_id;
+        $comment   = $request->comment;
+        $parentId  = $request->parent_comment_id;
+        $replyType = $request->reply_type ?? 'manual_reply';
 
         if ($provider === 'facebook') {
 
@@ -213,7 +203,7 @@ class ReviewController extends Controller
                 ->where('status', 'connected')
                 ->firstOrFail();
 
-            $targetId = $parentCommentId ?? $reviewId;
+            $targetId = $parentId ?: $reviewId;
 
             $response = Http::withToken($page->access_token)
                 ->post("https://graph.facebook.com/v17.0/{$targetId}/comments", [
@@ -227,11 +217,26 @@ class ReviewController extends Controller
                 ], 400);
             }
 
-            $type = $parentCommentId ? 'child reply' : 'review reply';
+            $fbReplyId = $response->json('id');
+
+            if (is_null($parentId) && $fbReplyId) {
+                ReviewReply::create([
+                    'user_id'   => auth()->id(),
+                    'provider'  => 'facebook',
+                    'page_id'   => $pageId,
+                    'review_id' => $reviewId,
+                    'reply_id'  => $fbReplyId,
+                    'reply_type' => $replyType,
+                    'comment'   => $comment,
+                ]);
+            }
 
             return response()->json([
                 'success' => true,
-                'message' => "Facebook {$type} successfully",
+                'message' => $parentId
+                    ? 'Facebook child reply sent successfully'
+                    : 'Facebook review reply sent & stored',
+                'reply_id' => $fbReplyId,
             ]);
         }
 
@@ -255,9 +260,24 @@ class ReviewController extends Controller
                 ], 400);
             }
 
+            ReviewReply::updateOrCreate(
+                [
+                    'provider'  => 'google',
+                    'page_id'   => $pageId,
+                    'review_id' => $reviewId,
+                ],
+                [
+                    'user_id'   => auth()->id(),
+                    'reply_id'  => $reviewId,
+                    'reply_type' => $replyType,
+                    'comment'   => $comment,
+                ]
+            );
+
             return response()->json([
                 'success' => true,
-                'message' => 'Google review replied successfully',
+                'message' => 'Google review replied & stored',
+                'reply_id' => $reviewId,
             ]);
         }
 
@@ -276,53 +296,69 @@ class ReviewController extends Controller
             'reply_id' => 'required|string',
         ]);
 
-        if ($request->provider === 'facebook') {
+        $provider = $request->provider;
+        $pageId   = $request->page_id;
+        $replyId  = $request->reply_id;
+
+        if ($provider === 'facebook') {
 
             $page = UserBusinessAccount::where('user_id', auth()->id())
                 ->where('provider', 'facebook')
-                ->where('provider_account_id', $request->page_id)
+                ->where('provider_account_id', $pageId)
                 ->where('status', 'connected')
                 ->firstOrFail();
 
             $response = Http::withToken($page->access_token)
-                ->delete("https://graph.facebook.com/v17.0/{$request->reply_id}");
+                ->delete("https://graph.facebook.com/v17.0/{$replyId}");
 
             if ($response->failed()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Failed to delete Facebook reply',
                     'facebook_response' => $response->json(),
                 ], 400);
             }
 
+            ReviewReply::where([
+                'provider' => 'facebook',
+                'page_id'  => $pageId,
+                'reply_id' => $replyId,
+                'user_id'  => auth()->id(),
+            ])->delete();
+
             return response()->json([
                 'success' => true,
-                'message' => 'Facebook reply deleted successfully',
+                'message' => 'Facebook reply deleted securely',
             ]);
         }
 
-        if ($request->provider === 'google') {
+        if ($provider === 'google') {
 
             $account = UserBusinessAccount::where('user_id', auth()->id())
                 ->where('provider', 'google')
-                ->where('provider_account_id', $request->page_id)
+                ->where('provider_account_id', $pageId)
                 ->where('status', 'connected')
                 ->firstOrFail();
 
             $response = Http::withToken($account->access_token)
-                ->put("https://mybusiness.googleapis.com/v4/{$request->reply_id}/reply", []);
+                ->put("https://mybusiness.googleapis.com/v4/{$replyId}/reply", []);
 
             if ($response->failed()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Failed to delete Google reply',
                     'google_response' => $response->json(),
                 ], 400);
             }
 
+            ReviewReply::where([
+                'provider' => 'google',
+                'page_id'  => $pageId,
+                'reply_id' => $replyId,
+                'user_id'  => auth()->id(),
+            ])->delete();
+
             return response()->json([
                 'success' => true,
-                'message' => 'Google reply deleted successfully',
+                'message' => 'Google reply deleted securely',
             ]);
         }
 
