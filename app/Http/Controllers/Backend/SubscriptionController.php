@@ -12,8 +12,14 @@ use Carbon\Carbon;
 use Stripe\Stripe;
 use Stripe\PaymentIntent;
 
+
+use Stripe\Invoice;
+use Laravel\Cashier\Subscription;
+
 class SubscriptionController extends Controller
 {
+    
+
         public function show(Request $request): JsonResponse
         {
             try {
@@ -82,7 +88,6 @@ class SubscriptionController extends Controller
                $user->createAsStripeCustomer();
             }
 
-            //  $user->createOrGetStripeCustomer();
             $paymentMethodExists = false;
             foreach ($user->paymentMethods() as $pm) {
                 if ($pm->id === $request->payment_method_id) {
@@ -94,10 +99,8 @@ class SubscriptionController extends Controller
                 $user->addPaymentMethod($request->payment_method_id);
             }
             
-            // Create or update payment method
             $user->updateDefaultPaymentMethod($request->payment_method);
             
-            // Create subscription
             $subscription = $user->newSubscription('default', $plan->stripe_price_id);
             
             if ($plan->trial_days > 0) {
@@ -216,43 +219,40 @@ class SubscriptionController extends Controller
             throw new \Exception('Card verification failed');
         }
         
-        // Payment method is now attached and verified
-        // Set as default
-        // $user->addPaymentMethod($paymentMethodId);
-        // $user->updateDefaultPaymentMethod($paymentMethodId);
         
-        // Create subscription with trial
-        // $subscription = $user->newSubscription('default', $plan->stripe_price_id)
-        //     ->trialDays($plan->trial_days)->create($paymentMethodId);
+        $user->addPaymentMethod($paymentMethodId);
+        $user->updateDefaultPaymentMethod($paymentMethodId);
         
-        // $subscription->update([
-        //     'trial_type' => 'free',
-        //     'trial_metadata' => [
-        //         'plan_id' => $plan->id,
-        //         'started_at' => now()->toISOString(),
-        //         'ends_at' =>  $subscription->trial_ends_at?->toISOString()
-        //     ]
-        // ]);
-
-        $trialEndTime = now()->addMinutes(8);
-
-        // 2. Pass the variable into both the trial logic and the metadata
+        
         $subscription = $user->newSubscription('default', $plan->stripe_price_id)
-            ->trialUntil($trialEndTime)
-            ->withMetadata([
-                'plan_id'    => $plan->id,
+            ->trialDays($plan->trial_days)->create($paymentMethodId);
+        
+        $subscription->update([
+            'trial_type' => 'free',
+            'trial_metadata' => [
+                'plan_id' => $plan->id,
                 'started_at' => now()->toISOString(),
-                'trial_type' => 'free',
-                'ends_at'    => $trialEndTime->toISOString(), 
-            ])
-        ->create($paymentMethodId);
+                'ends_at' =>  $subscription->trial_ends_at?->toISOString()
+            ]
+        ]);
+
+        // $trialEndTime = now()->addMinutes(5);
+
+        // // 2. Pass the variable into both the trial logic and the metadata
+        // $subscription = $user->newSubscription('default', $plan->stripe_price_id)
+        //     ->trialUntil($trialEndTime)
+        //     ->withMetadata([
+        //         'plan_id'    => $plan->id,
+        //         'started_at' => now()->toISOString(),
+        //         'trial_type' => 'free', 
+        //     ])
+        // ->create($paymentMethodId);
 
         return response()->json([
             'success' => true,
             'message' => 'Free trial started successfully!',
             'data' => [
                 'subscription' => $subscription,
-                'plan' => $plan,
                 'trial' => [
                     'type' => 'free',
                     'days' => $plan->trial_days,

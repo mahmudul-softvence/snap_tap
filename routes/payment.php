@@ -15,18 +15,4 @@ Route::middleware('auth:sanctum')->group(function () {
 
 });
 
- Route::get('/test-payment-method', function () {
-    \Stripe\Stripe::setApiKey(config('services.stripe.secret'));
-    
-    $paymentMethod = \Stripe\PaymentMethod::create([
-        'type' => 'card',
-        'card' => [
-             'token' => 'tok_mastercard', 
-        ],
-    ]);
-    
-    return [
-        'payment_method_id' => $paymentMethod->id,
-        'message' => 'Use this payment_method_id in your subscription request'
-    ];
-});
+

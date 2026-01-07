@@ -20,6 +20,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::post('/start-trial', [SubscriptionController::class, 'startFreeTrial']);
         Route::post('/convert-trial', [SubscriptionController::class, 'convertTrialToPaid']);
+
+        Route::post('/stripe/force-invoice', [SubscriptionController::class, 'forceInvoice']);
     });
     
 });

@@ -21,8 +21,8 @@ class PlanSeeder extends Seeder
                 'description' => 'Basic plan for individuals',
                 'features' => json_encode('Feature 1'),
                 'sort_order' => 1,
-                'stripe_product_id' => 'prod_ThNmWfI6hgs3nQ',
-                'stripe_price_id' => 'price_1Sjz0lLSyhijrF2j51nDpKV5'
+                'stripe_product_id' => 'prod_TkJeiAmc0yeDmY',
+                'stripe_price_id' => 'price_1Smp0x3Ctm6CRT1TLiqBhzxV'
             ],
         ];
 
