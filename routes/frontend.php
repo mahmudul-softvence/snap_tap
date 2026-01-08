@@ -65,7 +65,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Plans
     Route::get('/plans', [PlanController::class, 'index']);
     
-    // Subscriptions for Vendor
+    // Subscriptions for user
     Route::prefix('subscriptions')->group(function () {
         Route::get('/', [SubscriptionController::class, 'show']);
         Route::post('/create', [SubscriptionController::class, 'store']);

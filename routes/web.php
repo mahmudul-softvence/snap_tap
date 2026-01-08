@@ -9,3 +9,10 @@ Route::get('/', function () {
 });
 
 
+Route::get('/debug-subscription-class', function () {
+    $subscription = auth()->user()->subscription('default');
+    return [
+        'class' => get_class($subscription),
+        'methods' => get_class_methods($subscription),
+    ];
+});

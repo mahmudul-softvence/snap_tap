@@ -124,4 +124,7 @@ return [
 
     'logger' => env('CASHIER_LOGGER'),
 
+    //Added Custom Mode
+    'subscription_model' => App\Models\Subscription::class,
+
 ];

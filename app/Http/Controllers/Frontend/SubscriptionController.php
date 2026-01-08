@@ -6,32 +6,43 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Plan;
 use Illuminate\Support\Facades\Log;
-// use Laravel\Cashier\Subscription;
 use Illuminate\Http\JsonResponse;
-use Carbon\Carbon;
 use Stripe\Stripe;
-use Stripe\PaymentIntent;
 
-
-use Stripe\Invoice;
-use Laravel\Cashier\Subscription;
 
 class SubscriptionController extends Controller
 {
 
     public function show(Request $request): JsonResponse
     {
+        
         try {
             $user = $request->user();
-            
             $subscription = $user->subscription('default');
-            
+            $renewOn = $subscription->renewOn();
+            $paymentMethods = $user->paymentMethods();
+
             if (!$subscription) {
                 return response()->json([
                     'success' => true,
                     'data' => null,
                     'message' => 'No active subscription'
                 ]);
+            }
+            
+            $formattedMethods = [];
+            
+            foreach ($paymentMethods as $method) {
+                $formattedMethods[] = [
+                    'type' => $method->type,
+                    'card' => [
+                        'brand' => $method->card->brand,
+                        'last4' => $method->card->last4,
+                        'exp_month' => $method->card->exp_month,
+                        'exp_year' => $method->card->exp_year,
+                    ],
+                    'is_default' => $user->defaultPaymentMethod()?->id === $method->id,
+                ];
             }
             
             $data = [
@@ -44,12 +55,14 @@ class SubscriptionController extends Controller
                 'quantity' => $subscription->quantity,
                 'trial_started_at' => $subscription->trial_started_at,
                 'trial_ends_at' => $subscription->trial_ends_at,
+                'renew_on' => $renewOn?->format('Y-m-d'),
                 'created_at' => $subscription->created_at,
                 'updated_at' => $subscription->updated_at,
                 'on_trial' => $subscription->onTrial(),
                 'canceled' => $subscription->canceled(),
                 'on_grace_period' => $subscription->onGracePeriod(),
                 'active' => $subscription->active(),
+                'card_info' =>  $formattedMethods,
             ];
             
             return response()->json([
