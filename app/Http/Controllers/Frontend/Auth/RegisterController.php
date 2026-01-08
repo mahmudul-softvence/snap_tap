@@ -67,19 +67,7 @@ class RegisterController extends Controller
     {
         $credentials = $request->only('email', 'password');
 
-        if (Auth::attempt($credentials)) {
-            $user = Auth::user();
-            $token = $user->createToken('MyApp')->plainTextToken;
-
-            return response()->json([
-                'success' => true,
-                'message' => 'User logged in successfully.',
-                'data' => [
-                    'token' => $token,
-                    'name'  => $user->name,
-                ],
-            ], 200);
-        } else {
+        if (! Auth::attempt($credentials)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Unauthorised.',
@@ -88,7 +76,32 @@ class RegisterController extends Controller
                 ],
             ], 401);
         }
+
+        $user = Auth::user();
+
+        if ($user->two_factor_enabled) {
+            return response()->json([
+                'success' => true,
+                'two_factor_required' => true,
+                'message' => 'Two-factor authentication required.',
+                'data' => [
+                    'user_id' => $user->id,
+                ],
+            ], 200);
+        }
+
+        $token = $user->createToken('MyApp')->plainTextToken;
+
+        return response()->json([
+            'success' => true,
+            'message' => 'User logged in successfully.',
+            'data' => [
+                'token' => $token,
+                'name'  => $user->name,
+            ],
+        ], 200);
     }
+
 
 
     /**

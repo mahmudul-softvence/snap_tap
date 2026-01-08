@@ -22,8 +22,8 @@ class FacebookController extends Controller
         ];
 
         $query = http_build_query([
-            'client_id'     => config('services.facebook.client_id'),
-            'redirect_uri'  => config('services.facebook.redirect'),
+            'client_id'     => config('services.facebook.page_client_id'),
+            'redirect_uri'  => config('services.facebook.page_redirect'),
             'response_type' => 'code',
             'scope'         => implode(',', $scope),
             'auth_type'     => 'rerequest',
@@ -47,9 +47,9 @@ class FacebookController extends Controller
         $tokenResponse = Http::get(
             'https://graph.facebook.com/v17.0/oauth/access_token',
             [
-                'client_id'     => config('services.facebook.client_id'),
-                'client_secret' => config('services.facebook.client_secret'),
-                'redirect_uri'  => config('services.facebook.redirect'),
+                'client_id'     => config('services.facebook.page_client_id'),
+                'client_secret' => config('services.facebook.page_client_secret'),
+                'redirect_uri'  => config('services.facebook.page_redirect'),
                 'code'          => $request->code,
             ]
         )->json();

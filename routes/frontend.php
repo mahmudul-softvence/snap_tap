@@ -13,6 +13,7 @@ use App\Http\Controllers\Frontend\ReviewReqController;
 use App\Http\Controllers\Frontend\UserProfileController;
 use App\Http\Controllers\Frontend\GoogleBusinessController;
 use App\Http\Controllers\Frontend\ReviewController;
+use App\Http\Controllers\Frontend\TwoFactorController;
 use Illuminate\Support\Facades\Route;
 
 
@@ -28,6 +29,7 @@ Route::middleware('guest:sanctum')->group(function () {
         Route::post('register', 'register');
         Route::post('login', 'login');
     });
+    Route::post('/2fa/login', [TwoFactorController::class, 'loginVerify']);
 
     Route::get('change_review_status/{id}', [ReviewReqController::class, 'change_review_status']);
 });
@@ -131,4 +133,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/reviews/reply', [ReviewController::class, 'deleteReply']);
 
 });
+
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/2fa/setup', [TwoFactorController::class, 'setup']);
+    Route::post('/2fa/confirm', [TwoFactorController::class, 'confirm']);
+    Route::post('/2fa/disable', [TwoFactorController::class, 'disable']);
+});
+
+
 
