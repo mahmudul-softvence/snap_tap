@@ -26,7 +26,8 @@ class Plan extends Model
         'allow_trial',
         'setup_fee',
         'trial_type',
-        'auto_activate_after_trial'
+        'auto_activate_after_trial',
+        'billin_cycle',
     ];
 
     protected $casts = [

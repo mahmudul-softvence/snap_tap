@@ -9,15 +9,12 @@ class Subscription extends CashierSubscription
 {
     public function renewOn(): ?Carbon
     {
-        
         if ($this->onTrial() && $this->trial_ends_at) {
             return $this->trial_ends_at;
         }
-        
         if ($this->canceled()) {
             return null;
         }
-
         return $this->currentPeriodEnd();
     }
 
@@ -26,11 +23,9 @@ class Subscription extends CashierSubscription
         if ($this->onTrial()) {
             return $this->created_at;
         }
-
         if ($this->active() || $this->onGracePeriod()) {
             return $this->trial_ends_at ?? $this->created_at;
         }
-        
         return null;
     }
 
@@ -40,15 +35,12 @@ class Subscription extends CashierSubscription
         if ($this->onTrial()) {
             return $this->trial_ends_at;
         }
-
         if ($this->onGracePeriod()) {
             return $this->ends_at;
         }
-
         if ($this->active()) {
             return $this->ends_at;
         }
-        
         return null;
     }
 

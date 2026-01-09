@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Plan;
 use Stripe\StripeClient;
+use Carbon\Carbon;
+
 class PlanController extends Controller
 {
     protected $stripe;
@@ -18,12 +20,23 @@ class PlanController extends Controller
     public function index()
     {
         try {
-            $plans = Plan::active()->ordered()->get();
-            
+            $plan = Plan::firstOrFail();
+            $start_date = Carbon::now();            
+            $end_date = $start_date->copy()->addMonth(); 
+
+            $data = [
+                'id' => $plan->id,
+                'name' => $plan->name,
+                'price' => $plan->price,
+                'start date' => $start_date,
+                'end date' => $end_date,
+            ];
+
             return response()->json([
                 'success' => true,
-                'data' => $plans
+                'data' => $data
             ]);
+
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,

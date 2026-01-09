@@ -8,6 +8,14 @@ use App\Models\Plan;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\JsonResponse;
 use Stripe\Stripe;
+use Stripe\PaymentIntent;
+use Stripe\SetupIntent; 
+use Stripe\Exception\CardException;
+use Stripe\Exception\RateLimitException;
+use Stripe\Exception\InvalidRequestException;
+use Stripe\Exception\AuthenticationException;
+use Stripe\Exception\ApiConnectionException;
+use Stripe\Exception\ApiErrorException;
 
 
 class SubscriptionController extends Controller
@@ -81,72 +89,6 @@ class SubscriptionController extends Controller
         }
     } 
 
-    public function store(Request $request): JsonResponse
-    {
-
-    $request->validate([
-        'plan_id' => 'required|exists:plans,id',    
-        'payment_method' => 'required|string',
-    ]);
-    
-    try {
-        $user = $request->user();
-        $plan = Plan::findOrFail($request->plan_id);
-        
-        if ($user->subscribed('default')) {
-            return response()->json([
-                'success' => false,
-                'message' => 'You already have an active subscription'
-            ], 400);
-        }
-
-        if (!$user->hasStripeId()) {
-            $user->createAsStripeCustomer();
-        }
-
-        $paymentMethodExists = false;
-        foreach ($user->paymentMethods() as $pm) {
-            if ($pm->id === $request->payment_method_id) {
-                $paymentMethodExists = true;
-                break;
-            }
-        }
-            if (!$paymentMethodExists) {
-            $user->addPaymentMethod($request->payment_method_id);
-        }
-        
-        $user->updateDefaultPaymentMethod($request->payment_method);
-        
-        $subscription = $user->newSubscription('default', $plan->stripe_price_id);
-        
-        if ($plan->trial_days > 0) {
-            $subscription->trialDays($plan->trial_days);
-        }
-        
-        $subscription->create($request->payment_method);
-        $user->refresh();
-        $subscriptionData = $user->subscription('default');
-        
-        return response()->json([
-            'success' => true,
-            'message' => 'Subscription created successfully',
-            'data' => [
-                'subscription' => $subscriptionData,
-                'plan' => $plan,
-                'payment_method_used' => $user->defaultPaymentMethod()?->id
-            ]
-        ]);
-     } catch (\Exception $e) {
-            Log::error('Subscription creation failed: ' . $e->getMessage());
-            
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to create subscription',
-                'error' => $e->getMessage()
-            ], 500);
-        }
-    }
-
     public function startFreeTrial(Request $request)
     {
         $request->validate([
@@ -157,7 +99,6 @@ class SubscriptionController extends Controller
         try {
             $user = $request->user();
             $plan = Plan::findOrFail($request->plan_id);
-            
             
             if (!$plan->hasTrial()) {
                 return response()->json([
@@ -189,19 +130,16 @@ class SubscriptionController extends Controller
         }
     }
 
-    
     private function processFreeTrial($user, $plan, $paymentMethodId)
     {
         $setupIntent = $user->createSetupIntent([
             'payment_method' => $paymentMethodId,
             'confirm' => true,
             'usage' => 'off_session',
-
             'automatic_payment_methods' => [
                 'enabled' => true,
                 'allow_redirects' => 'never',
             ],
-
             'metadata' => [
                 'plan_id' => $plan->id,
                 'trial_type' => 'free',
@@ -258,7 +196,112 @@ class SubscriptionController extends Controller
             ]
         ]);
     }
+
+    public function buyNow(Request $request)
+    {
+        $request->validate([
+            'plan_id' => 'required|exists:plans,id',
+            'payment_method_id' => 'required|string',
+            'auto_renew' => 'required|boolean',
+        ]);
+        
+        try {
+            $user = $request->user();
+            $plan = Plan::findOrFail($request->plan_id);
+            
+            if ($user->subscribed('default')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You already have an active subscription'
+                ], 400);
+            }
+            
+            if (!$user->hasStripeId()) {
+                $user->createAsStripeCustomer();
+            }
+            
+            return $this->processImmediatePurchase($user, $plan, $request->payment_method_id, $request->auto_renew);
+            
+        } catch (\Exception $e) {
+            Log::error('Buy now error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to process purchase',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
     
+    private function processImmediatePurchase($user, $plan, $paymentMethodId, bool $autoRenew)
+    {
+        try {
+            if (! collect($user->paymentMethods())->contains('id', $paymentMethodId)) {
+                $user->addPaymentMethod($paymentMethodId);
+            }
+
+            $user->updateDefaultPaymentMethod($paymentMethodId);
+
+            $subscription = $user
+                ->newSubscription('default', $plan->stripe_price_id)
+                ->create($paymentMethodId, [
+                    'payment_behavior' => 'default_incomplete',
+                    'expand' => ['latest_invoice.payment_intent'],
+                    'metadata' => [
+                        'plan_id' => $plan->id,
+                        'auto_renew' => $autoRenew,
+                    ],
+                ]);
+
+            if (! $autoRenew && $subscription->valid()) {
+                $subscription->cancelAtPeriodEnd();
+            }
+
+            $stripeSubscription = $subscription->asStripeSubscription();
+            $invoice = $stripeSubscription->latest_invoice;
+            $paymentIntent = $invoice->payment_intent ?? null;
+
+            if ($paymentIntent && in_array($paymentIntent->status, [
+                'requires_action',
+                'requires_confirmation',
+            ])) {
+                return response()->json([
+                    'success' => true,
+                    'requires_action' => true,
+                    'message' => 'Payment authentication required',
+                    'data' => [
+                        'client_secret' => $paymentIntent->client_secret,
+                        'subscription_id' => $subscription->id,
+                        'invoice_id' => $invoice->id,
+                    ],
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Subscription activated successfully',
+                'data' => [
+                    'subscription_id' => $subscription->id,
+                    'status' => $subscription->stripe_status,
+                    'auto_renew' => ! $subscription->cancel_at_period_end,
+                    'current_period_end' => $subscription->ends_at,
+                ],
+            ]);
+
+        } catch (CardException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getError()->message,
+            ], 400);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to process subscription',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
     public function convertTrialToPaid(Request $request)
     {
         try {
@@ -281,8 +324,6 @@ class SubscriptionController extends Controller
             }
 
             $subscription->skipTrial();
-
-            // Refresh local data   
             $subscription->refresh();
 
             $subscription->update([
@@ -476,6 +517,72 @@ class SubscriptionController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to fetch invoice',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+     public function store(Request $request): JsonResponse
+    {
+
+    $request->validate([
+        'plan_id' => 'required|exists:plans,id',    
+        'payment_method' => 'required|string',
+    ]);
+    
+    try {
+        $user = $request->user();
+        $plan = Plan::findOrFail($request->plan_id);
+        
+        if ($user->subscribed('default')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You already have an active subscription'
+            ], 400);
+        }
+
+        if (!$user->hasStripeId()) {
+            $user->createAsStripeCustomer();
+        }
+
+        $paymentMethodExists = false;
+        foreach ($user->paymentMethods() as $pm) {
+            if ($pm->id === $request->payment_method_id) {
+                $paymentMethodExists = true;
+                break;
+            }
+        }
+            if (!$paymentMethodExists) {
+            $user->addPaymentMethod($request->payment_method_id);
+        }
+        
+        $user->updateDefaultPaymentMethod($request->payment_method);
+        
+        $subscription = $user->newSubscription('default', $plan->stripe_price_id);
+        
+        if ($plan->trial_days > 0) {
+            $subscription->trialDays($plan->trial_days);
+        }
+        
+        $subscription->create($request->payment_method);
+        $user->refresh();
+        $subscriptionData = $user->subscription('default');
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Subscription created successfully',
+            'data' => [
+                'subscription' => $subscriptionData,
+                'plan' => $plan,
+                'payment_method_used' => $user->defaultPaymentMethod()?->id
+            ]
+        ]);
+     } catch (\Exception $e) {
+            Log::error('Subscription creation failed: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to create subscription',
                 'error' => $e->getMessage()
             ], 500);
         }
