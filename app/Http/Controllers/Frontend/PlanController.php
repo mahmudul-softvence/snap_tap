@@ -14,7 +14,6 @@ class PlanController extends Controller
     {
         $this->stripe = new StripeClient(config('cashier.secret'));
     }
-
      
     public function index()
     {
@@ -33,9 +32,6 @@ class PlanController extends Controller
             ], 500);
         }
     }
-
-    
-    // Sync plans from Stripe (Admin function)
      
     public function syncFromStripe()
     {

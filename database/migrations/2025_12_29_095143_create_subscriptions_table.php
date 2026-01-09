@@ -20,7 +20,6 @@ return new class extends Migration
             $table->string('stripe_price')->nullable();
             $table->string('trial_type')->nullable()->comment('free, paid, setup_fee');
             $table->decimal('trial_amount_paid', 10, 2)->nullable();
-            $table->decimal('price', 10, 2);
             $table->timestamp('trial_started_at')->nullable();
             $table->boolean('trial_converted')->default(false);
             $table->json('trial_metadata')->nullable();

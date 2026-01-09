@@ -19,7 +19,6 @@ class SubscriptionController extends Controller
         try {
             $user = $request->user();
             $subscription = $user->subscription('default');
-            $renewOn = $subscription->renewOn();
             $paymentMethods = $user->paymentMethods();
 
             if (!$subscription) {
@@ -29,6 +28,14 @@ class SubscriptionController extends Controller
                     'message' => 'No active subscription'
                 ]);
             }
+            
+            $priceId = $subscription->items->first()->stripe_price;
+            $plan = Plan::where('stripe_price_id', $priceId)->first();
+            $amount = $plan->price;
+            $renewOn = $subscription->renewOn();
+            $displayEndDate = $subscription->displayEndDate();
+            $displayStartDate = $subscription->displayStartDate();
+            $getPlan = $subscription->getPlan();
             
             $formattedMethods = [];
             
@@ -44,20 +51,16 @@ class SubscriptionController extends Controller
                     'is_default' => $user->defaultPaymentMethod()?->id === $method->id,
                 ];
             }
-            
+
             $data = [
-                'id' => $subscription->id,
-                'name' => $subscription->name,
-                'stripe_id' => $subscription->stripe_id,
+                'name' => $subscription->type,
                 'stripe_status' => $subscription->stripe_status,
-                'stripe_price' => $subscription->stripe_price,
-                'price' => $subscription->price,
-                'quantity' => $subscription->quantity,
+                'plan' => $getPlan,
+                'price' => $amount,
                 'trial_started_at' => $subscription->trial_started_at,
-                'trial_ends_at' => $subscription->trial_ends_at,
+                'start' => $displayStartDate?->format('Y-m-d'),
+                'ends' => $displayEndDate?->format('Y-m-d'),
                 'renew_on' => $renewOn?->format('Y-m-d'),
-                'created_at' => $subscription->created_at,
-                'updated_at' => $subscription->updated_at,
                 'on_trial' => $subscription->onTrial(),
                 'canceled' => $subscription->canceled(),
                 'on_grace_period' => $subscription->onGracePeriod(),
@@ -256,12 +259,10 @@ class SubscriptionController extends Controller
         ]);
     }
     
-
     public function convertTrialToPaid(Request $request)
     {
         try {
             $user = $request->user();
-            $plan = Plan::findOrFail($request->plan_id);
 
             if (!$user->subscribed('default')) {
                 return response()->json([
@@ -285,7 +286,6 @@ class SubscriptionController extends Controller
             $subscription->refresh();
 
             $subscription->update([
-                'price' => $plan->price,
                 'trial_ends_at' => now(),
                 'trial_converted' => true,
                 'trial_metadata->converted_at' => now()->toISOString(),
@@ -294,10 +294,6 @@ class SubscriptionController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Trial converted to paid subscription',
-                'data' => [
-                    'subscription' => $subscription,
-                    'next_billing_date' => $subscription->asStripeSubscription()->current_period_end,
-                ],
             ]);
 
         } catch (\Stripe\Exception\CardException $e) {
@@ -355,7 +351,7 @@ class SubscriptionController extends Controller
         }
     }
 
-     public function cancel(Request $request): JsonResponse
+    public function cancel(Request $request): JsonResponse
     {
         try {
             $user = $request->user();
@@ -367,7 +363,6 @@ class SubscriptionController extends Controller
                 ], 400);
             }
             
-            // Cancel at period end
             $subscription = $user->subscription('default')->cancel();
             
             return response()->json([
