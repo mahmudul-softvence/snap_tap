@@ -67,9 +67,7 @@ class SocialiteController extends Controller
         ])->save();
 
 
-        BasicSetting::create([
-            'user_id' => $user->id
-        ]);
+        $user->basicSetting()->create();
 
         $token = $user->createToken('social-login')->plainTextToken;
 

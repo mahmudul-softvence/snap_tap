@@ -18,11 +18,15 @@ class ReviewReqController extends Controller
      */
     public function index(): JsonResponse
     {
+
+        $total_request = Review::where('user_id', Auth::id())->count();
+
         $reviews = Review::where('user_id', Auth::id())->latest()->paginate(10);
 
         return response()->json([
             'success' => true,
             'data' => $reviews,
+            'total_request' => $total_request
         ]);
     }
 
@@ -31,14 +35,29 @@ class ReviewReqController extends Controller
      */
     public function create(Request $request): JsonResponse
     {
+
+        if (true) { //$request->user->onFreeTrial()
+
+            $reviewCount = auth()->user()->reviews()->count();
+
+            if ($reviewCount >= 5) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Free trial users can only send up to 5 review requests.'
+                ], 403);
+            }
+        }
+
+
+
         $validated = $request->validate([
             'name'        => 'required|string|max:255',
             'email'       => 'nullable|email|max:255',
             'phone'       => 'required|string|max:20',
             'status'      => ['required', Rule::in(['sent', 'reviewed', 'reminded'])],
             'message'     => 'required|string',
-            'sent_sms'    => 'boolean',
-            'sent_email'  => 'boolean',
+            'sent_sms'    => 'required|boolean',
+            'sent_email'  => 'required|boolean',
             'retries'     => 'integer|min:0',
         ]);
 
@@ -65,7 +84,7 @@ class ReviewReqController extends Controller
             1,
             $nextMessageDelay,
             $maxRetries
-        )->delay(now()->addSeconds($firstMessageDelay));
+        )->delay(now()->addHour($firstMessageDelay));
 
 
 
