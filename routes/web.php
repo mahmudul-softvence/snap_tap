@@ -1,4 +1,6 @@
 <?php
+
+use App\Http\Controllers\Update\SystemUpdateController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -23,9 +25,6 @@ Route::get('/terms-conditions', function () {
 Route::get('/privacy-policy', function () {
     return view('frontend.privacy-policy');
 })->name('privacy.policy');
-
-
-
 
 
 Route::get('update', [SystemUpdateController::class, 'index'])->name('admin.update.index');
