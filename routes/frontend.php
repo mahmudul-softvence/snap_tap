@@ -15,7 +15,6 @@ use App\Http\Controllers\Frontend\GoogleBusinessController;
 use Illuminate\Support\Facades\Route;
 
 
-
 Route::middleware('guest:sanctum')->group(function () {
 
     Route::controller(SocialiteController::class)->group(function () {
@@ -75,7 +74,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('review_req/create', 'create');
         Route::put('review_req/update/{id}', 'update');
         Route::get('review_req/show/{id}', 'show');
-        Route::delete('review_req/delete/{id}', 'destory');
+        Route::delete('review_req/delete/{id}', 'destroy');
     });
 
     // Basic Settings
@@ -86,7 +85,7 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 
-// -----------For Production Google Business Profile (GMB) connector route------------
+
 Route::get('/google/gmb/callback', [GmbController::class, 'callback']);
 
 Route::middleware('auth:sanctum')->group(function () {
@@ -96,7 +95,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/gmb/reviews/{location}', [GmbController::class, 'reviews']);
     Route::post('/gmb/reply', [GmbController::class, 'reply']);
 });
-// -------------------------------------------------------------------------------------
 
 /// fake GMB routes for testing (Mock Version)
 // Route::get('/google/gmb/auth-url', [GmbMockVersionController::class, 'authUrl']);

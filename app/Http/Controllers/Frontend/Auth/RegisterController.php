@@ -137,11 +137,11 @@ class RegisterController extends Controller
             'password' => Hash::make($request->new_password),
         ]);
 
-        $request->user()->currentAccessToken()->delete();
+        // $request->user()->currentAccessToken()->delete();
 
         return response()->json([
             'success' => true,
-            'message' => 'Password changed successfully. Please login again.',
+            'message' => 'Password changed successfully.',
         ], 200);
     }
 }
