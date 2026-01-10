@@ -113,7 +113,6 @@ Route::middleware('auth:sanctum')->group(function () {
 // });
 
 
-<<<<<<< HEAD
 Route::middleware('auth:sanctum')->group(function () {
     // Payment Methods
     Route::prefix('payment-methods')->group(function () {
@@ -144,7 +143,6 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
 });
-=======
 
 Route::get('/facebook/callback', [FacebookController::class, 'callback']);
 // Facebook
@@ -155,4 +153,3 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/facebook/reviews/{page}', [FacebookController::class, 'reviews']);
     Route::post('/facebook/reply', [FacebookController::class, 'reply']);
 });
->>>>>>> b287d508000668e163ad3025b52b89ffbafdef6e
