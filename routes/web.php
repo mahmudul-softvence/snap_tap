@@ -15,6 +15,8 @@ Route::get('/debug-subscription-class', function () {
         'methods' => get_class_methods($subscription),
     ];
 });
+
+
 Route::get('/terms-conditions', function () {
     return view('frontend.terms-conditions');
 })->name('terms.conditions');
