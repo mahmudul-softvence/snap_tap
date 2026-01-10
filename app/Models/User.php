@@ -59,7 +59,6 @@ class User extends Authenticatable
         return $this->hasMany(Qr::class);
     }
 
-
     public function messageTemplates()
     {
         return $this->hasMany(MessageTemplate::class);
@@ -72,4 +71,27 @@ class User extends Authenticatable
 
 
     
+    public function businessAccounts()
+    {
+        return $this->hasMany(UserBusinessAccount::class);
+    }
+
+    public function googleBusinessAccount()
+    {
+        return $this->businessAccounts()->where('provider', 'google')->first();
+    }
+
+    public function facebookBusinessAccount()
+    {
+        return $this->businessAccounts()->where('provider', 'facebook')->first();
+    }
+    public function reviews()
+    {
+        return $this->hasMany(Review::class);
+    }
+
+    public function basicSetting()
+    {
+        return $this->hasOne(BasicSetting::class);
+    }
 }

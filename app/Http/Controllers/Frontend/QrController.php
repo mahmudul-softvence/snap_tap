@@ -74,7 +74,6 @@ class QrController extends Controller
     }
 
 
-
     /**
      * Get QR code for the authenticated user by provider
      */
@@ -104,7 +103,7 @@ class QrController extends Controller
                     'name' => $user->name,
                     'email' => $user->email,
                 ],
-                'qr_code' => $qrRecord->qr_code,
+                'qr_code' =>  asset($qrRecord->qr_code),
             ],
         ], 200);
     }
