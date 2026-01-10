@@ -217,7 +217,7 @@ class SubscriptionController extends Controller
         ]);
     }
 
-    public function buyNow(Request $request)
+    public function buyNow(Request $request): JsonResponse
     {
         $request->validate([
             'plan_id' => 'required|exists:plans,id',
@@ -236,14 +236,10 @@ class SubscriptionController extends Controller
                 ], 400);
             }
 
-            if (! $user->hasStripeId()) {
-                $user->createAsStripeCustomer();
-            }
-
             return $this->processImmediatePurchase(
                 $user,
                 $plan,
-                $request->payment_intent_id, 
+                $request->payment_intent_id,
                 $request->auto_renew
             );
 
@@ -251,19 +247,17 @@ class SubscriptionController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to process purchase',
-                'error' => $e->getMessage(),
             ], 500);
         }
     }
-
     
-    private function processImmediatePurchase($user, Plan $plan, string $paymentIntentId, bool $autoRenew)
-    {
+    private function processImmediatePurchase(
+        $user,
+        Plan $plan,
+        string $paymentIntentId,
+        bool $autoRenew
+    ): JsonResponse {
         try {
-            if (! $user->hasStripeId()) {
-                $user->createAsStripeCustomer();
-            }
-
             Stripe::setApiKey(config('cashier.secret'));
 
             $paymentIntent = PaymentIntent::retrieve($paymentIntentId);
@@ -290,7 +284,7 @@ class SubscriptionController extends Controller
                     'metadata' => [
                         'plan_id' => $plan->id,
                         'auto_renew' => $autoRenew ? 'yes' : 'no',
-                        'payment_intent_id' => $paymentIntent->id,
+                        'payment_intent_id' => $paymentIntentId,
                     ],
                 ]);
 
@@ -306,9 +300,7 @@ class SubscriptionController extends Controller
                     'stripe_subscription_id' => $subscription->stripe_id,
                     'status' => $subscription->stripe_status,
                     'auto_renew' => ! $subscription->cancel_at_period_end,
-                    'current_period_end' => optional($subscription->current_period_end)
-                        ? $subscription->current_period_end->toDateTimeString()
-                        : null,
+                    'current_period_end' => $subscription->currentPeriodEnd()?->toDateTimeString(),
                 ],
             ]);
 
@@ -321,11 +313,10 @@ class SubscriptionController extends Controller
             ], 500);
 
         } catch (\Exception $e) {
-            Log::error('Immediate purchase failed', ['error' => $e->getMessage()]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to process purchase',
+                'message' => 'Failed to process subscription',
             ], 500);
         }
     }
