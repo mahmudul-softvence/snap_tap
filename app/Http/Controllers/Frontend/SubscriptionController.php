@@ -8,7 +8,6 @@ use App\Models\Plan;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\JsonResponse;
 use Stripe\Stripe;
-use Stripe\Exception\CardException;
 use Stripe\PaymentIntent;
 use Stripe\Exception\ApiErrorException;
 
@@ -16,7 +15,6 @@ class SubscriptionController extends Controller
 {
     public function show(Request $request): JsonResponse
     {
-        
         try {
             $user = $request->user();
             $subscription = $user->subscription('default');
@@ -178,39 +176,86 @@ class SubscriptionController extends Controller
         ]);
     }
 
+    public function createPaymentIntent(Request $request): JsonResponse
+    {
+        $request->validate([
+            'plan_id' => 'required|exists:plans,id',
+        ]);
+
+        $user = $request->user();
+        $plan = Plan::findOrFail($request->plan_id);
+
+        if (! $user->hasStripeId()) {
+            $user->createAsStripeCustomer();
+        }
+
+        Stripe::setApiKey(config('cashier.secret'));
+
+        $paymentIntent = PaymentIntent::create([
+            'amount' => (int) ($plan->price * 100),
+            'currency' => strtolower($plan->currency ?? 'usd'),
+            'customer' => $user->stripe_id,
+
+            'automatic_payment_methods' => [
+                'enabled' => true,
+                'allow_redirects' => 'never',
+            ],
+
+            'setup_future_usage' => 'off_session',
+
+            'metadata' => [
+                'purpose' => 'subscription_initial_payment',
+                'plan_id' => $plan->id,
+                'user_id' => $user->id,
+            ],
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'client_secret' => $paymentIntent->client_secret,
+            'payment_intent_id' => $paymentIntent->id,
+        ]);
+    }
+
     public function buyNow(Request $request)
     {
         $request->validate([
             'plan_id' => 'required|exists:plans,id',
-            'payment_method_id' => 'required|string',
+            'payment_intent_id' => 'required|string',
             'auto_renew' => 'required|boolean',
         ]);
-        
+
         try {
             $user = $request->user();
             $plan = Plan::findOrFail($request->plan_id);
-            
+
             if ($user->subscribed('default')) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'You already have an active subscription'
+                    'message' => 'You already have an active subscription',
                 ], 400);
             }
-            
-            if (!$user->hasStripeId()) {
+
+            if (! $user->hasStripeId()) {
                 $user->createAsStripeCustomer();
             }
-            
-            return $this->processImmediatePurchase($user, $plan, $request->payment_method_id, $request->auto_renew);
-            
+
+            return $this->processImmediatePurchase(
+                $user,
+                $plan,
+                $request->payment_intent_id, 
+                $request->auto_renew
+            );
+
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to process purchase',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
+
     
     private function processImmediatePurchase($user, Plan $plan, string $paymentIntentId, bool $autoRenew)
     {
