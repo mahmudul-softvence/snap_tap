@@ -41,11 +41,11 @@ return [
         'redirect'      => '/api/auth/github/callback',
     ],
 
-    'facebook' => [
-        'client_id'     => env('FACEBOOK_CLIENT_ID'),
-        'client_secret' => env('FACEBOOK_CLIENT_SECRET'),
-        'redirect'      => '/api/auth/facebook/callback',
-    ],
+    // 'facebook' => [
+    //     'client_id'     => env('FACEBOOK_CLIENT_ID'),
+    //     'client_secret' => env('FACEBOOK_CLIENT_SECRET'),
+    //     'redirect'      => '/api/auth/facebook/callback',
+    // ],
 
     'google' => [
         'client_id'     => env('GOOGLE_CLIENT_ID'),
@@ -55,6 +55,18 @@ return [
     'stripe' => [
         'secret'     => env('STRIPE_SECRET'),
         'webhook_secret'     => env('STRIPE_WEBHOOK_SECRET')
+    ],
+
+    'google_gmb' => [
+        'client_id' => env('GOOGLE_GMB_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_GMB_CLIENT_SECRET'),
+        'redirect' => env('GOOGLE_GMB_REDIRECT_URI'),
+    ],
+
+    'facebook' => [
+        'client_id' => env('FACEBOOK_CLIENT_ID'),
+        'client_secret' => env('FACEBOOK_CLIENT_SECRET'),
+        'redirect' => env('FACEBOOK_REDIRECT_URI'),
     ],
 
 ];

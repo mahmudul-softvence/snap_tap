@@ -3,16 +3,19 @@
 namespace App\Http\Controllers\Frontend\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\BasicSetting;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 
 class RegisterController extends Controller
 {
     /**
-     * Register api
+     * Register API
      *
      * @return \Illuminate\Http\Response
      */
@@ -38,6 +41,10 @@ class RegisterController extends Controller
         $user = User::create($input);
         $user->assignRole('user');
 
+        BasicSetting::create([
+            'user_id' => $user->id
+        ]);
+
         $token = $user->createToken('MyApp')->plainTextToken;
 
         return response()->json([
@@ -51,7 +58,7 @@ class RegisterController extends Controller
     }
 
     /**
-     * Login api
+     * Login API
      *
      * @return \Illuminate\Http\Response
      */
@@ -84,6 +91,13 @@ class RegisterController extends Controller
     }
 
 
+    /**
+     * Logout API
+     *
+     * @return \Illuminate\Http\Response
+     */
+
+
     public function logout(Request $request): JsonResponse
     {
         $request->user()->currentAccessToken()->delete();
@@ -91,6 +105,46 @@ class RegisterController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'User logged out successfully.',
+        ], 200);
+    }
+
+    /**
+     * Change Password API
+     *
+     * @return \Illuminate\Http\Response
+     */
+
+    public function change_pwd(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $hasPassword = Hash::check($request->current_password, '');
+
+        $rules = [
+            'new_password' => ['required', 'string', 'min:8', 'confirmed'],
+        ];
+
+        if ($hasPassword) {
+            $rules['current_password'] = ['required', 'string'];
+        }
+
+        $request->validate($rules);
+
+        if ($hasPassword && !Hash::check($request->current_password, $user->password)) {
+            throw ValidationException::withMessages([
+                'current_password' => ['Current password is incorrect.'],
+            ]);
+        }
+
+        $user->update([
+            'password' => Hash::make($request->new_password),
+        ]);
+
+        $request->user()->currentAccessToken()->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Password changed successfully. Please login again.',
         ], 200);
     }
 }
