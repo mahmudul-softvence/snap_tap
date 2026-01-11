@@ -114,7 +114,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Plans
     Route::get('/plans', [PlanController::class, 'index']);
-    
+
     // Subscriptions for user
     Route::prefix('subscriptions')->group(function () {
         Route::get('/', [SubscriptionController::class, 'show']);
@@ -131,7 +131,6 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::post('/stripe/force-invoice', [SubscriptionController::class, 'forceInvoice']);
     });
-
 });
 // Route::middleware('auth:sanctum')->group(function () {
 //     Route::get('/gmb/accounts', [GmbMockVersionController::class, 'accounts']);
@@ -148,6 +147,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/facebook/auth-url', [FacebookController::class, 'authUrl']);
     Route::post('/facebook/connect-page', [FacebookController::class, 'connectPage']);
     Route::get('/facebook/pages', [FacebookController::class, 'pages']);
-    Route::get('/facebook/reviews/{page}', [FacebookController::class, 'reviews']);
+    Route::get('/facebook/reviews', [FacebookController::class, 'reviews']);
     Route::post('/facebook/reply', [FacebookController::class, 'reply']);
 });
