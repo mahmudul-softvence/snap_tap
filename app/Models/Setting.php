@@ -8,18 +8,25 @@ use Illuminate\Support\Facades\Crypt;
 class Setting extends Model
 {
     protected $fillable = ['key', 'value', 'is_sensitive'];
+    
+    public $timestamps = false;
 
-    public function getValueAttribute($value)
+    public static function get(string $key, $default = null)
     {
-        return $this->is_sensitive && $value
-            ? Crypt::decryptString($value)
-            : $value;
-    }
+        $setting = self::where('key', $key)->first();
 
-    public function setValueAttribute($value)
-    {
-        $this->attributes['value'] = $this->is_sensitive && $value
-            ? Crypt::encryptString($value)
-            : $value;
+        if (! $setting) {
+            return $default;
+        }
+
+        if ($setting->is_sensitive && $setting->value) {
+            try {
+                return Crypt::decryptString($setting->value);
+            } catch (\Exception $e) {
+                return $default;
+            }
+        }
+
+        return $setting->value;
     }
 }
