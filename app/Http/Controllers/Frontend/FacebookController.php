@@ -158,6 +158,19 @@ class FacebookController extends Controller
                 continue;
             }
 
+            $rating = null;
+
+            if (!empty($item['review_text'])) {
+                $rating = 5;
+            } else {
+                $recommendationType = $item['open_graph_story']['data']['recommendation_type'] ?? null;
+                $rating = match ($recommendationType) {
+                    'positive' => 5,
+                    'negative' => 1,
+                    default => null,
+                };
+            }
+
             $review = GetReview::updateOrCreate(
                 ['facebook_review_id' => $reviewId],
                 [
@@ -165,7 +178,7 @@ class FacebookController extends Controller
                     'page_id' => $pageId,
                     'open_graph_story_id' => $reviewId,
                     'reviewer_name' => $item['reviewer']['name'] ?? null,
-                    'rating' => $item['rating'] ?? null,
+                    'rating' => $rating,
                     'review_text' => $item['review_text'] ?? ($item['open_graph_story']['message'] ?? null),
                     'reviewed_at' => $item['created_time'] ?? now(),
                     'status' => 'pending',
@@ -176,6 +189,7 @@ class FacebookController extends Controller
                 $savedCount++;
             }
         }
+
 
         return response()->json([
             'success' => true,

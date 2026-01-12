@@ -16,7 +16,9 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Frontend\PaymentMethodController;
 use App\Http\Controllers\Frontend\PlanController;
 use App\Http\Controllers\Frontend\SubscriptionController;
-
+use App\Services\GeminiService;
+use Illuminate\Support\Facades\Http;
+use LucianoTonet\GroqLaravel\Facades\Groq;
 
 Route::middleware('guest:sanctum')->group(function () {
 
@@ -149,4 +151,35 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/facebook/pages', [FacebookController::class, 'pages']);
     Route::get('/facebook/reviews', [FacebookController::class, 'reviews']);
     Route::post('/facebook/reply', [FacebookController::class, 'reply']);
+});
+
+
+
+Route::get('/test-ai-reply', function () {
+    // Hardcoded review text for testing AI reply
+    $reviewText = "SVD Developers is an excellent and highly professional team. Their work quality, timely delivery, and client support are truly impressive. From the beginning to the end of the project, they communicate clearly and handle every requirement with great attention to detail.
+They are responsive, skilled, and very committed to delivering the best results. If you are looking for a reliable and trustworthy development team, SVD Developers is definitely a great choice. Highly recommended....!";
+
+    // Hardcoded model name for testing
+    $model = 'openai/gpt-oss-20b';  // You can change this to any model you want to test
+
+    // Send the request to Groq API to generate a reply
+    $response = Groq::chat()->completions()->create([
+        'model' => $model,
+        'messages' => [
+            ['role' => 'user', 'content' => $reviewText],
+        ]
+    ]);
+
+    // Check if the response has a valid reply and return it
+    if (isset($response['choices'][0]['message']['content'])) {
+        $replyText = $response['choices'][0]['message']['content'];
+    } else {
+        $replyText = 'Sorry, there was an issue generating the reply.';
+    }
+
+    return response()->json([
+        'review' => $reviewText,
+        'reply' => $replyText,
+    ]);
 });
