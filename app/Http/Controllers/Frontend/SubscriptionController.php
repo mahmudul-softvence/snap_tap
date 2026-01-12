@@ -80,7 +80,7 @@ class SubscriptionController extends Controller
         }
     } 
 
-    public function startFreeTrial(Request $request)
+    public function startFreeTrial(Request $request): JsonResponse
     {
         $request->validate([
             'plan_id' => 'required|exists:plans,id',
@@ -119,11 +119,12 @@ class SubscriptionController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to start free trial',
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
 
-    private function processFreeTrialWithSetupIntent($user, $plan, $paymentMethodId)
+    private function processFreeTrialWithSetupIntent($user, $plan, $paymentMethodId): JsonResponse
     {
         $setupIntent = $user->createSetupIntent([
             'payment_method' => $paymentMethodId,
@@ -247,16 +248,13 @@ class SubscriptionController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to process purchase',
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
     
-    private function processImmediatePurchase(
-        $user,
-        Plan $plan,
-        string $paymentIntentId,
-        bool $autoRenew
-    ): JsonResponse {
+    private function processImmediatePurchase($user, Plan $plan, string $paymentIntentId, bool $autoRenew): JsonResponse
+    {
         try {
             Stripe::setApiKey(config('cashier.secret'));
 
@@ -305,18 +303,17 @@ class SubscriptionController extends Controller
             ]);
 
         } catch (ApiErrorException $e) {
-            Log::error('Stripe API error', ['error' => $e->getMessage()]);
-
             return response()->json([
                 'success' => false,
                 'message' => 'Stripe error occurred',
+                'error' => $e->getMessage(),
             ], 500);
 
         } catch (\Exception $e) {
-
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to process subscription',
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -364,7 +361,6 @@ class SubscriptionController extends Controller
             ], 402);
 
         } catch (\Exception $e) {
-
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to convert trial',
@@ -400,6 +396,41 @@ class SubscriptionController extends Controller
                 'success' => false,
                 'message' => 'Failed to cancel subscription',
                 'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function billingHistory(Request $request): JsonResponse
+    {
+        try {
+            $user = $request->user();
+
+            $subscriptions = $user->subscriptions()
+                ->orderByDesc('created_at')
+                ->paginate(
+                    $request->get('per_page', 10)
+                );
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Subscriptions fetched successfully',
+                'data' => $subscriptions->through(function ($subscription) {
+                 $plan = Plan::where('stripe_price_id', $subscription->stripe_price)->first();
+
+                    return [
+                        'id' => $subscription->id,
+                        'plan_name' => $plan?->name,
+                        'amount' => $plan->price,
+                        'start_date' => $subscription->created_at,
+                        'end_date' => $subscription->ends_at,
+                    ];
+                }),
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unable to fetch billing history',
+                'error' => $e->getMessage(),
             ], 500);
         }
     }

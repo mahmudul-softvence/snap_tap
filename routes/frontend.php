@@ -128,16 +128,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/', [SubscriptionController::class, 'show']);
         Route::post('/create-payment', [SubscriptionController::class, 'createPaymentIntent']);
         Route::post('/buynow', [SubscriptionController::class, 'buyNow']);
-        Route::post('/swap', [SubscriptionController::class, 'swap']);
         Route::post('/cancel', [SubscriptionController::class, 'cancel']);
-        Route::post('/resume', [SubscriptionController::class, 'resume']);
-        Route::get('/invoices', [SubscriptionController::class, 'invoices']);
-        Route::get('/invoice/{id}', [SubscriptionController::class, 'invoice']);
-
         Route::post('/start-trial', [SubscriptionController::class, 'startFreeTrial']);
         Route::post('/convert-trial', [SubscriptionController::class, 'convertTrialToPaid']);
+        Route::get('/billing-history', [SubscriptionController::class, 'billingHistory']);
 
-        Route::post('/stripe/force-invoice', [SubscriptionController::class, 'forceInvoice']);
     });
 
 });
