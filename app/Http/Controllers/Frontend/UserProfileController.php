@@ -93,4 +93,44 @@ class UserProfileController extends Controller
             'business' => isset($business) ? $business : null
         ]);
     }
+
+
+    public function adminProfileUpdate(Request $request)
+    {
+        $user = Auth::user();
+
+        abort_if(! $user || ! $user->hasRole('super_admin'), 403, 'Unauthorized');
+
+        $validator = Validator::make($request->all(), [
+            'name'  => 'required|string|max:255',
+            'email' => 'nullable|email|unique:users,email,' . $user->id,
+            'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation Error.',
+                'errors'  => $validator->errors(),
+            ], 422);
+        }
+
+        if ($request->hasFile('image')) {
+            $user->image = ImageUpload::upload($request->image, 'user', $user->image);
+        }
+
+        $user->name = $request->name;
+
+        if ($request->filled('email')) {
+            $user->email = $request->email;
+        }
+
+        $user->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Profile updated successfully.',
+            'data'    => $user,
+        ]);
+    }
 }

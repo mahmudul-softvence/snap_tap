@@ -41,12 +41,6 @@ return [
         'redirect'      => '/api/auth/github/callback',
     ],
 
-    // 'facebook' => [
-    //     'client_id'     => env('FACEBOOK_CLIENT_ID'),
-    //     'client_secret' => env('FACEBOOK_CLIENT_SECRET'),
-    //     'redirect'      => '/api/auth/facebook/callback',
-    // ],
-
     'google' => [
         'client_id'     => env('GOOGLE_CLIENT_ID'),
         'client_secret' => env('GOOGLE_CLIENT_SECRET'),
@@ -64,9 +58,13 @@ return [
     ],
 
     'facebook' => [
-        'client_id' => env('FACEBOOK_CLIENT_ID'),
-        'client_secret' => env('FACEBOOK_CLIENT_SECRET'),
-        'redirect' => env('FACEBOOK_REDIRECT_URI'),
+        'client_id' => env('FACEBOOK_LOGIN_CLIENT_ID'),
+        'client_secret' => env('FACEBOOK_LOGIN_CLIENT_SECRET'),
+        'redirect' => env('FACEBOOK_LOGIN_REDIRECT_URI'),
+
+        'page_client_id' => env('FACEBOOK_CLIENT_ID'),
+        'page_client_secret' => env('FACEBOOK_CLIENT_SECRET'),
+        'page_redirect' => env('FACEBOOK_REDIRECT_URI'),
     ],
 
 ];
