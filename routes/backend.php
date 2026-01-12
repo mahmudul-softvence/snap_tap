@@ -3,6 +3,7 @@
 use App\Http\Controllers\Frontend\UserProfileController;
 use App\Http\Controllers\SettingController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Backend\AdminPlanController;
 
 
     Route::controller(UserProfileController::class)->group(function () {
@@ -14,4 +15,8 @@ use Illuminate\Support\Facades\Route;
         Route::post('/settings/update', [SettingController::class, 'update']);
     });
 
-
+    //Plan for admin.
+    Route::middleware('auth:sanctum')->group(function () {
+    Route::get('adminplan/', [AdminPlanController::class, 'index']);
+    Route::post('plan/create', [AdminPlanController::class, 'store']);
+    });

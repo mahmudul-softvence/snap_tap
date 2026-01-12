@@ -15,7 +15,7 @@ class PlanSeeder extends Seeder
     {
         $plans = [
             [
-                'name' => 'Pro Plan',
+                'name' => 'Pro Plan',   
                 'price' => 49.00,
                 'interval' => 'month',
                 'description' => 'Basic plan for individuals',

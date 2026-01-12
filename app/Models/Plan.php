@@ -27,7 +27,10 @@ class Plan extends Model
         'setup_fee',
         'trial_type',
         'auto_activate_after_trial',
-        'billin_cycle',
+        'platforms',
+        'request_credits',
+        'review_reply_credits',
+        'total_ai_agent',
     ];
 
     protected $casts = [
@@ -59,9 +62,6 @@ class Plan extends Model
         $start = $startDate ? Carbon::parse($startDate) : now();
         return $start->addDays($this->trial_days);
     }
-
-
-
 
     public function scopeActive($query)
     {

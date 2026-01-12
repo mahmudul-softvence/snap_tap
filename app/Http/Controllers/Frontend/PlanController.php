@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Frontend;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Laravel\Cashier\Cashier;
 use App\Models\Plan;
 use Stripe\StripeClient;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 
 class PlanController extends Controller
 {
@@ -17,7 +19,7 @@ class PlanController extends Controller
         $this->stripe = new StripeClient(config('cashier.secret'));
     }
      
-    public function index()
+    public function index(): JsonResponse
     {
         try {
             $plan = Plan::firstOrFail();
@@ -49,11 +51,9 @@ class PlanController extends Controller
     public function syncFromStripe()
     {
         try {
-            // Fetch products from Stripe
             $products = $this->stripe->products->all(['active' => true]);
             
             foreach ($products->data as $product) {
-                // Get prices for this product
                 $prices = $this->stripe->prices->all([
                     'product' => $product->id,
                     'active' => true

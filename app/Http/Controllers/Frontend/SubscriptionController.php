@@ -318,7 +318,7 @@ class SubscriptionController extends Controller
         }
     }
 
-    public function convertTrialToPaid(Request $request)
+    public function convertTrialToPaid(Request $request): JsonResponse
     {
         try {
             $user = $request->user();
