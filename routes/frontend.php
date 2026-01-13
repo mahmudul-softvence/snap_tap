@@ -18,7 +18,9 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Frontend\PaymentMethodController;
 use App\Http\Controllers\Frontend\PlanController;
 use App\Http\Controllers\Frontend\SubscriptionController;
-
+use App\Services\GeminiService;
+use Illuminate\Support\Facades\Http;
+use LucianoTonet\GroqLaravel\Facades\Groq;
 
 Route::middleware('guest:sanctum')->group(function () {
 
@@ -125,7 +127,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Plans
     Route::get('/plans', [PlanController::class, 'index']);
-    
+
     // Subscriptions for user
     Route::prefix('subscriptions')->group(function () {
         Route::get('/', [SubscriptionController::class, 'show']);
@@ -135,10 +137,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/start-trial', [SubscriptionController::class, 'startFreeTrial']);
         Route::post('/convert-trial', [SubscriptionController::class, 'convertTrialToPaid']);
         Route::get('/billing-history', [SubscriptionController::class, 'billingHistory']);
-
     });
-
 });
+
 // Route::middleware('auth:sanctum')->group(function () {
 //     Route::get('/gmb/accounts', [GmbMockVersionController::class, 'accounts']);
 //     Route::get('/gmb/locations/{account}', [GmbMockVersionController::class, 'locations'])->where('account', '.*');
@@ -146,15 +147,13 @@ Route::middleware('auth:sanctum')->group(function () {
 //     Route::post('/gmb/reply', [GmbMockVersionController::class, 'reply']);
 // });
 
-
-
 Route::get('/facebook/callback', [FacebookController::class, 'callback']);
 // Facebook
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/facebook/auth-url', [FacebookController::class, 'authUrl']);
     Route::post('/facebook/connect-page', [FacebookController::class, 'connectPage']);
     Route::get('/facebook/pages', [FacebookController::class, 'pages']);
-    Route::get('/facebook/reviews/{page}', [FacebookController::class, 'reviews']);
+    Route::get('/facebook/reviews', [FacebookController::class, 'reviews']);
     Route::post('/facebook/reply', [FacebookController::class, 'reply']);
 });
 
@@ -165,7 +164,6 @@ Route::middleware('auth:sanctum')->group(function () {
     // Reply to Review and Delete Reply
     Route::post('/reviews/reply', [ReviewController::class, 'reply']);
     Route::delete('/reviews/reply', [ReviewController::class, 'deleteReply']);
-
 });
 
 
@@ -180,3 +178,28 @@ Route::middleware('auth:sanctum')->group(function () {
 
 
 
+
+Route::get('/test-ai-reply', function () {
+    $reviewText = "SVD Developers is an excellent and highly professional team. Their work quality, timely delivery, and client support are truly impressive. From the beginning to the end of the project, they communicate clearly and handle every requirement with great attention to detail.
+They are responsive, skilled, and very committed to delivering the best results. If you are looking for a reliable and trustworthy development team, SVD Developers is definitely a great choice. Highly recommended....!";
+
+    $model = 'openai/gpt-oss-20b';
+
+    $response = Groq::chat()->completions()->create([
+        'model' => $model,
+        'messages' => [
+            ['role' => 'user', 'content' => $reviewText],
+        ]
+    ]);
+
+    if (isset($response['choices'][0]['message']['content'])) {
+        $replyText = $response['choices'][0]['message']['content'];
+    } else {
+        $replyText = 'Sorry, there was an issue generating the reply.';
+    }
+
+    return response()->json([
+        'review' => $reviewText,
+        'reply' => $replyText,
+    ]);
+});

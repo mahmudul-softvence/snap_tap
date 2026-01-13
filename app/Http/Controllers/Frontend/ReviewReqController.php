@@ -84,7 +84,7 @@ class ReviewReqController extends Controller
             1,
             $nextMessageDelay,
             $maxRetries
-        )->delay(now()->addHour($firstMessageDelay));
+        )->delay(now()->addMinute($firstMessageDelay));
 
 
 

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Frontend;
 
 use App\Http\Controllers\Controller;
+use App\Models\GetReview;
 use App\Models\UserBusinessAccount;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
@@ -128,13 +129,75 @@ class FacebookController extends Controller
         ]);
     }
 
-    public function reviews($pageId)
+    public function reviews()
     {
+        $pageId = UserBusinessAccount::where('user_id', auth()->id())
+            ->where('status', 'connected')
+            ->first()
+            ->provider_account_id;
+
         $account = $this->getPageAccount($pageId);
 
-        return Http::get("https://graph.facebook.com/v24.0/{$pageId}/ratings?fields=reviewer,rating,review_text,created_time,recommendation_type,open_graph_story&access_token={$account->access_token}")
-            ->json();
+        $response = Http::get("https://graph.facebook.com/v24.0/{$pageId}/ratings?fields=reviewer,rating,review_text,created_time,recommendation_type,open_graph_story&access_token={$account->access_token}");
+
+        $data = $response->json();
+
+        if (!isset($data['data']) || empty($data['data'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No reviews found',
+            ], 404);
+        }
+
+        $savedCount = 0;
+
+        foreach ($data['data'] as $item) {
+            $reviewId = $item['open_graph_story']['id'] ?? null;
+
+            if (!$reviewId) {
+                continue;
+            }
+
+            $rating = null;
+
+            if (!empty($item['review_text'])) {
+                $rating = 5;
+            } else {
+                $recommendationType = $item['open_graph_story']['data']['recommendation_type'] ?? null;
+                $rating = match ($recommendationType) {
+                    'positive' => 5,
+                    'negative' => 1,
+                    default => null,
+                };
+            }
+
+            $review = GetReview::updateOrCreate(
+                ['facebook_review_id' => $reviewId],
+                [
+                    'user_id' => auth()->id(),
+                    'page_id' => $pageId,
+                    'open_graph_story_id' => $reviewId,
+                    'reviewer_name' => $item['reviewer']['name'] ?? null,
+                    'rating' => $rating,
+                    'review_text' => $item['review_text'] ?? ($item['open_graph_story']['message'] ?? null),
+                    'reviewed_at' => $item['created_time'] ?? now(),
+                    'status' => 'pending',
+                ]
+            );
+
+            if ($review->wasRecentlyCreated || $review->wasChanged()) {
+                $savedCount++;
+            }
+        }
+
+
+        return response()->json([
+            'success' => true,
+            'message' => "$savedCount reviews synced successfully",
+            'data' => $data['data'],
+        ]);
     }
+
 
     public function reply(Request $request)
     {
@@ -178,5 +241,4 @@ class FacebookController extends Controller
 
         return $account;
     }
-
 }

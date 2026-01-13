@@ -18,13 +18,13 @@ class PlanController extends Controller
     {
         $this->stripe = new StripeClient(config('cashier.secret'));
     }
-     
-    public function index(): JsonResponse
+
+    public function index()
     {
         try {
             $plan = Plan::firstOrFail();
-            $start_date = Carbon::now();            
-            $end_date = $start_date->copy()->addMonth(); 
+            $start_date = Carbon::now();
+            $end_date = $start_date->copy()->addMonth();
 
             $data = [
                 'id' => $plan->id,
@@ -38,7 +38,6 @@ class PlanController extends Controller
                 'success' => true,
                 'data' => $data
             ]);
-
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -47,18 +46,18 @@ class PlanController extends Controller
             ], 500);
         }
     }
-     
+
     public function syncFromStripe()
     {
         try {
             $products = $this->stripe->products->all(['active' => true]);
-            
+
             foreach ($products->data as $product) {
                 $prices = $this->stripe->prices->all([
                     'product' => $product->id,
                     'active' => true
                 ]);
-                
+
                 foreach ($prices->data as $price) {
                     Plan::updateOrCreate(
                         ['stripe_price_id' => $price->id],
@@ -75,7 +74,7 @@ class PlanController extends Controller
                     );
                 }
             }
-            
+
             return response()->json([
                 'success' => true,
                 'message' => 'Plans synced successfully'

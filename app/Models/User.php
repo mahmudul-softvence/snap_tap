@@ -75,8 +75,6 @@ class User extends Authenticatable
     }
 
 
-    //for google and facebook business accounts
-    
     public function businessAccounts()
     {
         return $this->hasMany(UserBusinessAccount::class);
@@ -99,5 +97,10 @@ class User extends Authenticatable
     public function basicSetting()
     {
         return $this->hasOne(BasicSetting::class);
+    }
+
+    public function aiAgents()
+    {
+        return $this->hasMany(AiAgent::class);
     }
 }
