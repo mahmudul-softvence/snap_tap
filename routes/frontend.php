@@ -134,14 +134,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/stripe/force-invoice', [SubscriptionController::class, 'forceInvoice']);
     });
 });
+
 // Route::middleware('auth:sanctum')->group(function () {
 //     Route::get('/gmb/accounts', [GmbMockVersionController::class, 'accounts']);
 //     Route::get('/gmb/locations/{account}', [GmbMockVersionController::class, 'locations'])->where('account', '.*');
 //     Route::get('/gmb/reviews/{location}', [GmbMockVersionController::class, 'reviews'])->where('location', '.*');
 //     Route::post('/gmb/reply', [GmbMockVersionController::class, 'reply']);
 // });
-
-
 
 Route::get('/facebook/callback', [FacebookController::class, 'callback']);
 // Facebook
@@ -156,14 +155,11 @@ Route::middleware('auth:sanctum')->group(function () {
 
 
 Route::get('/test-ai-reply', function () {
-    // Hardcoded review text for testing AI reply
     $reviewText = "SVD Developers is an excellent and highly professional team. Their work quality, timely delivery, and client support are truly impressive. From the beginning to the end of the project, they communicate clearly and handle every requirement with great attention to detail.
 They are responsive, skilled, and very committed to delivering the best results. If you are looking for a reliable and trustworthy development team, SVD Developers is definitely a great choice. Highly recommended....!";
 
-    // Hardcoded model name for testing
-    $model = 'openai/gpt-oss-20b';  // You can change this to any model you want to test
+    $model = 'openai/gpt-oss-20b';
 
-    // Send the request to Groq API to generate a reply
     $response = Groq::chat()->completions()->create([
         'model' => $model,
         'messages' => [
@@ -171,7 +167,6 @@ They are responsive, skilled, and very committed to delivering the best results.
         ]
     ]);
 
-    // Check if the response has a valid reply and return it
     if (isset($response['choices'][0]['message']['content'])) {
         $replyText = $response['choices'][0]['message']['content'];
     } else {

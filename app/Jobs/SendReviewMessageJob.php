@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Mail;
 use App\Models\Review;
 use Exception;
 use Illuminate\Support\Facades\Log;
+use Twilio\Rest\Client;
 
 class SendReviewMessageJob implements ShouldQueue
 {
@@ -64,7 +65,20 @@ class SendReviewMessageJob implements ShouldQueue
 
         if ($this->sendSms && $review->phone) {
             try {
-                // Send SMS logic here
+                $sid = env('TWILIO_SID');
+                $token = env('TWILIO_AUTH_TOKEN');
+                $fromNumber = env('TWILIO_PHONE_NUMBER');
+
+                $client = new Client($sid, $token);
+
+                $client->messages->create(
+                    $review->phone,
+                    [
+                        'from' => $fromNumber,
+                        'body' => $review->message,
+                    ]
+                );
+
                 $sent = true;
             } catch (Exception $e) {
                 Log::error('SMS failed: ' . $e->getMessage());
@@ -83,7 +97,7 @@ class SendReviewMessageJob implements ShouldQueue
                     $this->messageCount + 1,
                     $this->nextMessageHours,
                     $this->maxRetries
-                )->delay(now()->addHours($this->nextMessageHours));
+                )->delay(now()->addMinute($this->nextMessageHours));
             }
         }
     }
