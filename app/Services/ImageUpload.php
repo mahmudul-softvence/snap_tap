@@ -17,6 +17,7 @@ class ImageUpload
             'user'              => 'users',
             'business_profile'  => 'business_profiles',
             'default'           => 'others',
+            'setting'           => 'settings',
         ];
 
         $folder = $folders[$type] ?? 'others';

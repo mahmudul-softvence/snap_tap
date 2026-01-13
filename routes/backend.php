@@ -10,9 +10,9 @@ use App\Http\Controllers\Backend\AdminPlanController;
         Route::put('admin-profile/update', 'adminProfileUpdate')->middleware(['role:super_admin','auth:sanctum']);
     });
 
-    Route::middleware('auth:sanctum')->group(function () {
+    Route::middleware('role:super_admin','auth:sanctum')->group(function () {
         Route::get('/settings', [SettingController::class, 'index']);
-        Route::post('/settings/update', [SettingController::class, 'update']);
+        Route::put('/settings/update', [SettingController::class, 'updateSettings']);
     });
 
     //Plan for admin.

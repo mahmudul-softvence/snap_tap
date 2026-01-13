@@ -11,6 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Make default string length 191 to prevent index too long error
+        Schema::defaultStringLength(191);
+
         Schema::create('subscriptions', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id');
@@ -28,6 +31,7 @@ return new class extends Migration
             $table->timestamp('ends_at')->nullable();
             $table->timestamps();
 
+            // index with safe length
             $table->index(['user_id', 'stripe_status']);
         });
     }
