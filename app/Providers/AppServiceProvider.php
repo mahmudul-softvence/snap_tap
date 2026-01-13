@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Models\Subscription;
+use App\Models\SubscriptionItem;
 use Laravel\Cashier\Cashier;
 
 
@@ -82,5 +83,10 @@ class AppServiceProvider extends ServiceProvider
         Config::set('services.twilio.sid', Setting::where('key', 'twilio_sid')->value('value'));
         Config::set('services.twilio.token', Setting::where('key', 'twilio_auth_token')->value('value'));
         Config::set('services.twilio.from', Setting::where('key', 'twilio_from_number')->value('value'));
+
+        //CUSTOM MODELS
+         Cashier::useSubscriptionModel(Subscription::class);
+         Cashier::useSubscriptionItemModel(SubscriptionItem::class);
+
     }
 }

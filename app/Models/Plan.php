@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon; 
+use App\Models\SubscriptionItem;
+
 
 class Plan extends Model
 {
@@ -61,6 +63,15 @@ class Plan extends Model
     {
         $start = $startDate ? Carbon::parse($startDate) : now();
         return $start->addDays($this->trial_days);
+    }
+  
+    public function subscriptionItems()
+    {
+        return $this->hasMany(
+            SubscriptionItem::class,
+            'stripe_price',
+            'stripe_price_id'
+        );
     }
 
     public function scopeActive($query)
