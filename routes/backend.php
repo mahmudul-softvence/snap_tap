@@ -23,4 +23,5 @@ use App\Http\Controllers\Backend\AdminSubscriptionController;
         Route::get('/admin-subscription-dashboard', [AdminSubscriptionController::class, 'adminSubscriptionDashboard']);
         Route::post('/admin/subscriptions/change-subscription', [AdminSubscriptionController::class, 'changeSubscription']);
         Route::patch('/admin/subscriptions/change/{id}', [AdminSubscriptionController::class, 'changeStatus']);
+        Route::delete('/admin/subscriptions/delete/{id}', [AdminSubscriptionController::class, 'deleteSubscription']);
     });

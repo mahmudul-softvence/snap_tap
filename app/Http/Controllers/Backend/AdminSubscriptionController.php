@@ -10,8 +10,6 @@ use Illuminate\Support\Facades\Log;
 use App\Models\Subscription;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
-use Stripe\Stripe;
-use Stripe\Subscription as StripeSubscription;
 
 class AdminSubscriptionController extends Controller
 {
@@ -243,6 +241,29 @@ class AdminSubscriptionController extends Controller
         }
     }
 
+    public function deleteSubscription(int $id): JsonResponse
+    {
+        try {
+            DB::transaction(function () use ($id) {
 
+                $subscription = Subscription::with('items')->findOrFail($id);
+
+                $subscription->items()->delete();
+                $subscription->delete();
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Subscription deleted successfully',
+            ]);
+
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete subscription',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
 
 }
