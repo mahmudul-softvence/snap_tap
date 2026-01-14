@@ -9,6 +9,7 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 use Laravel\Cashier\Billable;
+use App\Models\Subscription;
 
 class User extends Authenticatable
 {
@@ -74,7 +75,6 @@ class User extends Authenticatable
         return $this->hasOne(BusinessProfile::class, 'user_id', 'id');
     }
 
-
     public function businessAccounts()
     {
         return $this->hasMany(UserBusinessAccount::class);
@@ -102,5 +102,10 @@ class User extends Authenticatable
     public function aiAgents()
     {
         return $this->hasMany(AiAgent::class);
+    }
+
+    public function subscriptions()
+    {
+        return $this->hasMany(Subscription::class);
     }
 }

@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Log;
 use App\Models\Subscription;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use App\Models\User;
 
 class AdminSubscriptionController extends Controller
 {
@@ -244,6 +245,7 @@ class AdminSubscriptionController extends Controller
     public function deleteSubscription(int $id): JsonResponse
     {
         try {
+            
             DB::transaction(function () use ($id) {
 
                 $subscription = Subscription::with('items')->findOrFail($id);
@@ -265,5 +267,116 @@ class AdminSubscriptionController extends Controller
             ], 500);
         }
     }
+
+    public function getCustomerList(Request $request): JsonResponse
+    {
+        try {
+
+            $request->validate([
+                'search'   => 'nullable|string|max:255',
+                'status'   => 'nullable|in:active,inactive,pending,deleted',
+                'plan_id'  => 'nullable|exists:plans,id',
+                'per_page' => 'nullable|integer|min:1|max:100',
+            ]);
+
+            $query = User::query()
+                ->with([
+                    'subscriptions.items.plan',
+                ]);
+
+            if ($request->filled('search')) {
+                $query->where(function ($q) use ($request) {
+                    $q->where('name', 'like', '%' . $request->search . '%')
+                    ->orWhere('email', 'like', '%' . $request->search . '%');
+                });
+            }
+
+            if ($request->filled('plan_id')) {
+                $query->whereHas('subscriptions.items.plan', function ($q) use ($request) {
+                    $q->where('id', $request->plan_id);
+                });
+            }
+
+            if ($request->filled('status')) {
+                match ($request->status) {
+                    'active' => $query->whereHas('subscriptions', fn ($q) =>
+                        $q->where('stripe_status', 'active')
+                    ),
+
+                    'inactive' => $query->whereDoesntHave('subscriptions'),
+
+                    'pending' => $query->whereHas('subscriptions', fn ($q) =>
+                        $q->where('stripe_status', 'trialing')
+                    ),
+
+                    'deleted' => $query->whereHas('subscriptions', fn ($q) =>
+                        $q->whereNotNull('ends_at')
+                    ),
+
+                    default => null,
+                };
+            }
+
+            $customers = $query
+                ->latest()
+                ->paginate($request->get('per_page', 10))
+                ->through(function ($user, $index) {
+
+                    $subscription = $user->subscriptions->first();
+                    $plan = $subscription?->items->first()?->plan;
+
+                    return [
+                        'id' => $user->id,
+                        'name' => $user->name,
+                        'contact' => [
+                            'email' => $user->email,
+                            'phone' => $user->phone,
+                        ],
+                        'plan' => $plan?->name ?? '—',
+                        'status' => $this->resolveCustomerStatus($subscription),
+                        'created_at' => $user->created_at->toDateTimeString(),
+                    ];
+                });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Customer list loaded successfully',
+                'data' => $customers,
+            ]);
+
+        } catch (\Throwable $e) {
+
+            Log::error('Customer List Error', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load customers',
+            ], 500);
+        }
+    }
+
+    private function resolveCustomerStatus($subscription): string
+    {
+        if (! $subscription) {
+            return 'Inactive';
+        }
+
+        if ($subscription->ends_at && $subscription->ends_at->isPast()) {
+            return 'Deleted';
+        }
+
+        if ($subscription->onTrial()) {
+            return 'Pending';
+        }
+
+        if ($subscription->active()) {
+            return 'Active';
+        }
+
+        return 'Inactive';
+    }
+
 
 }
