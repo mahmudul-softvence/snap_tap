@@ -94,8 +94,8 @@ class AppServiceProvider extends ServiceProvider
         Config::set('services.twilio.from', Setting::where('key', 'twilio_from_number')->value('value'));
 
         //CUSTOM MODELS
-         Cashier::useSubscriptionModel(Subscription::class);
-         Cashier::useSubscriptionItemModel(SubscriptionItem::class);
+        Cashier::useSubscriptionModel(Subscription::class);
+        Cashier::useSubscriptionItemModel(SubscriptionItem::class);
 
     }
 }
