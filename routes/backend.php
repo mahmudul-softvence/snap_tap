@@ -16,9 +16,11 @@ use App\Http\Controllers\Backend\AdminSubscriptionController;
         Route::put('/settings/update', [SettingController::class, 'updateSettings']);
     });
 
-    //Plan for admin.
+    //ADMIN PLAN AND SUBSCRIPTION.
     Route::middleware('auth:sanctum')->group(function () {
-    Route::get('/adminplan', [AdminPlanController::class, 'index']);
-    Route::post('/plan/create', [AdminPlanController::class, 'store']);
-    Route::get('/admin-subscription-dashboard', [AdminSubscriptionController::class, 'adminSubscriptionDashboard']);
+        Route::get('/adminplan', [AdminPlanController::class, 'index']);
+        Route::post('/plan/create', [AdminPlanController::class, 'store']);
+        Route::get('/admin-subscription-dashboard', [AdminSubscriptionController::class, 'adminSubscriptionDashboard']);
+        Route::post('/admin/subscriptions/change-subscription', [AdminSubscriptionController::class, 'changeSubscription']);
+        Route::patch('/admin/subscriptions/change/{id}', [AdminSubscriptionController::class, 'changeStatus']);
     });

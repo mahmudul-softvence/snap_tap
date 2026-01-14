@@ -9,6 +9,9 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
 use App\Models\Subscription;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
+use Stripe\Stripe;
+use Stripe\Subscription as StripeSubscription;
 
 class AdminSubscriptionController extends Controller
 {
@@ -74,6 +77,7 @@ class AdminSubscriptionController extends Controller
                 ->through(function ($subscription) {
 
                     $plan = $subscription->items->first()?->plan;
+                    $renewOn = $subscription->renewOn();
 
                     return [
                         'subscription_id' => $subscription->id,
@@ -82,9 +86,7 @@ class AdminSubscriptionController extends Controller
                         'amount' => $plan?->price,
                         'renewal' => ! $subscription->cancel_at_period_end,
                         'start_date' => $subscription->created_at->toDateTimeString(),
-                        'next_billing' => $subscription->trial_ends_at
-                            ? $subscription->trial_ends_at->toDateTimeString()
-                            : $subscription->ends_at?->toDateTimeString(),
+                        'next_billing' => $renewOn?->format('Y-m-d'),
                         'status' => $this->resolveStatus($subscription),
                     ];
                 });
@@ -151,5 +153,96 @@ class AdminSubscriptionController extends Controller
 
         return 'Unknown';
     }
+
+    public function changeSubscription(Request $request): JsonResponse
+    {
+            $request->validate([
+            'subscription_id' => 'required|exists:subscriptions,id',
+            'plan_id' => 'required|exists:plans,id',
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+            
+            $subscription = Subscription::with('items')->findOrFail($request->subscription_id);
+            $newPlan = Plan::findOrFail($request->plan_id);
+
+            if (! $newPlan->stripe_price_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Selected plan is not linked to Stripe',
+                ], 422);
+            }
+
+            $currentItem = $subscription->items->first();
+
+            if ($currentItem?->stripe_price === $newPlan->stripe_price_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User is already on this plan',
+                ], 409);
+            }
+
+            $subscription->swap($newPlan->stripe_price_id);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Subscription plan updated successfully',
+            ]);
+
+        } catch (\Throwable $e) {
+
+            DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to change subscription plan',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function changeStatus(Request $request, int $id): JsonResponse
+    {
+        $request->validate([
+            'action' => 'required|in:cancel,cancel_at_period_end,resume',
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+
+            $subscription = Subscription::findOrFail($id);
+
+            match($request->action) {
+                'cancel' => $subscription->cancelNow(),
+                'cancel_at_period_end' => $subscription->cancel(),
+                'resume' => $subscription->resume(),
+                default => null,
+            };
+
+            DB::commit(); 
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Subscription status updated successfully',
+            ], 200);
+
+        } catch (\Throwable $e) {
+
+            DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update subscription status',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+
 
 }
