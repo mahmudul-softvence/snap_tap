@@ -38,7 +38,7 @@ class Subscription extends CashierSubscription
             return $this->ends_at;
         }
         if ($this->active()) {
-            return $this->ends_at;
+            return $this->currentPeriodEnd();
         }
         return null;
     }
@@ -52,6 +52,10 @@ class Subscription extends CashierSubscription
         if ($this->onTrial()) {
             $trialType = $this->trial_type ?? 'free';
             return ucfirst($trialType) . ' Trial - ' . $planName;
+        }
+        
+        if ($this->active()) {
+           return $planName;
         }
     }
 

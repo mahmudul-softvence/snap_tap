@@ -52,7 +52,7 @@ class SubscriptionController extends Controller
             }
 
             $data = [
-                'name' => $subscription->type,
+                'name' => $getPlan,
                 'stripe_status' => $subscription->stripe_status,
                 'plan' => $getPlan,
                 'price' => $amount,
