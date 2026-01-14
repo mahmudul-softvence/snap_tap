@@ -7,9 +7,12 @@ use Laravel\Cashier\SubscriptionItem  as CashierSubscriptionItem;
 
 class SubscriptionItem extends CashierSubscriptionItem
 {
-
-     public function subscriptions()
-     {
-        return $this->belongsTo(Subscription::class);
-     }
+      public function plan()
+      {
+            return $this->belongsTo(
+                  Plan::class,
+                  'stripe_price',
+                  'stripe_price_id'
+            );
+      }
 }

@@ -6,7 +6,6 @@ use App\Models\Subscription;
 use App\Models\SubscriptionItem;
 use Laravel\Cashier\Cashier;
 
-
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Config;

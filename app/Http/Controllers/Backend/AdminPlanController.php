@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Plan;
 use Stripe\StripeClient;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Http\JsonResponse;
 
 class AdminPlanController extends Controller
@@ -21,39 +20,37 @@ class AdminPlanController extends Controller
     public function index(Request $request): JsonResponse
     {
         try {
-            $plans = Plan::with([
+           $plans = Plan::query()
+                ->with([
                     'subscriptionItems.subscription'
                 ])
-                ->orderByDesc('created_at')
-                ->paginate($request->get('per_page', 10));
+                ->latest()
+                ->paginate($request->integer('per_page', 10));
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Plans fetched successfully',
-                'data' => $plans->through(function ($plan) {
+            $data = $plans->through(function ($plan) {
 
-                    $subscriptions = $plan->subscriptionItems
-                        ->pluck('subscription')
-                        ->filter()
-                        ->unique('id');
+                $activeSubscribers = $plan->subscriptionItems
+                    ->pluck('subscription')
+                    ->filter()
+                    ->unique('id')
+                    ->filter(fn ($sub) => $sub->isActiveLike())
+                    ->count();
 
-                    $activeStatuses = ['active', 'trialing', 'past_due'];
+                return [
+                    'id' => $plan->id,
+                    'name' => $plan->name,
+                    'price' => $plan->price,
+                    'billing_cycle' => ucfirst($plan->billing_cycle),
+                    'status' => $plan->is_active ? 'active' : 'inactive',
+                    'total_subscribers' => $activeSubscribers,
+                    'created_on' => $plan->created_at->toDateString(),
+                ];
+            });
 
-                    $totalSubscribers = $subscriptions
-                        ->whereIn('stripe_status', $activeStatuses)
-                        ->count();
-
-                    return [
-                        'id' => $plan->id,
-                        'name' => $plan->name,
-                        'price' => $plan->price,
-                        'billing_cycle' => ucfirst($plan->billing_cycle),
-                        'status' => $plan->is_active ? 'active' : 'inactive',
-                        'total_subscribers' => $totalSubscribers,
-                        'created_on' => $plan->created_at->format('Y-m-d'),
-                    ];
-                }),
-            ]);
+        return response()->json([
+            'success' => true,
+            'data' => $data,
+        ]);
 
         } catch (\Throwable $e) {
             return response()->json([

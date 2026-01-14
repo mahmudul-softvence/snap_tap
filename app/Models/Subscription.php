@@ -31,7 +31,6 @@ class Subscription extends CashierSubscription
 
     public function displayEndDate(): ?Carbon
     {
-        
         if ($this->onTrial()) {
             return $this->trial_ends_at;
         }
@@ -55,4 +54,24 @@ class Subscription extends CashierSubscription
             return ucfirst($trialType) . ' Trial - ' . $planName;
         }
     }
+
+   public function isActiveLike(): bool
+   {
+        return in_array($this->stripe_status, [
+            'active',
+            'trialing',
+            'past_due',
+        ]);
+    }
+
+      public function scopeActiveLike($query)
+    {
+        return $query->whereIn('stripe_status', [
+            'active',
+            'trialing',
+            'past_due',
+        ]);
+    }
+
+   
 }
