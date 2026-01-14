@@ -2,6 +2,9 @@
 
 namespace App\Providers;
 
+use App\Models\Subscription;
+use App\Models\SubscriptionItem;
+use Laravel\Cashier\Cashier;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Config;
@@ -69,5 +72,30 @@ class AppServiceProvider extends ServiceProvider
         Config::set('services.twilio.sid', Setting::get('twilio_sid'));
         Config::set('services.twilio.token', Setting::get('twilio_auth_token'));
         Config::set('services.twilio.from', Setting::get('twilio_from_number'));
+        // -----------------------------
+        // GOOGLE LOGIN
+        // -----------------------------
+        Config::set('services.google.client_id', Setting::where('key', 'google_client_id')->value('value'));
+        Config::set('services.google.client_secret', Setting::where('key', 'google_client_secret')->value('value'));
+        Config::set('services.google.redirect', Setting::where('key', 'google_redirect_uri')->value('value') ?? url('/api/auth/google/callback'));
+
+        // -----------------------------
+        // GOOGLE GMB
+        // -----------------------------
+        // Config::set('services.google_gmb.client_id', Setting::where('key', 'google_gmb_client_id')->value('value'));
+        // Config::set('services.google_gmb.client_secret', Setting::where('key', 'google_gmb_client_secret')->value('value'));
+        // Config::set('services.google_gmb.redirect', Setting::where('key', 'google_gmb_redirect_uri')->value('value'));
+
+        // -----------------------------
+        // TWILIO / SMS
+        // -----------------------------
+        Config::set('services.twilio.sid', Setting::where('key', 'twilio_sid')->value('value'));
+        Config::set('services.twilio.token', Setting::where('key', 'twilio_auth_token')->value('value'));
+        Config::set('services.twilio.from', Setting::where('key', 'twilio_from_number')->value('value'));
+
+        //CUSTOM MODELS
+         Cashier::useSubscriptionModel(Subscription::class);
+         Cashier::useSubscriptionItemModel(SubscriptionItem::class);
+
     }
 }
