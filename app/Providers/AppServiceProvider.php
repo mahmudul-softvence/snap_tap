@@ -57,15 +57,6 @@ class AppServiceProvider extends ServiceProvider
 
         /**
          * -----------------------
-         * GOOGLE LOGIN
-         * -----------------------
-         */
-        Config::set('services.google.client_id', Setting::get('google_client_id'));
-        Config::set('services.google.client_secret', Setting::get('google_client_secret'));
-        Config::set('services.google.redirect', Setting::get('google_redirect_uri', url('/api/auth/google/callback')));
-
-        /**
-         * -----------------------
          * TWILIO
          * -----------------------
          */
@@ -75,9 +66,9 @@ class AppServiceProvider extends ServiceProvider
         // -----------------------------
         // GOOGLE LOGIN
         // -----------------------------
-        Config::set('services.google.client_id', Setting::where('key', 'google_client_id')->value('value'));
-        Config::set('services.google.client_secret', Setting::where('key', 'google_client_secret')->value('value'));
-        Config::set('services.google.redirect', Setting::where('key', 'google_redirect_uri')->value('value') ?? url('/api/auth/google/callback'));
+        Config::set('services.google.client_id', Setting::get('google_client_id'));
+        Config::set('services.google.client_secret', Setting::get('google_client_secret'));
+        Config::set('services.google.redirect', Setting::get('google_redirect_uri', url('/api/auth/google/callback')));
 
         // -----------------------------
         // GOOGLE GMB
