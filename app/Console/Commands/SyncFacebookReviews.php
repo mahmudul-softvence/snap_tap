@@ -13,6 +13,7 @@ class SyncFacebookReviews extends Command
 
     public function handle()
     {
+        \Log::info('Run hoise');
         UserBusinessAccount::where('status', 'connected')
             ->chunk(50, function ($accounts) {
                 foreach ($accounts as $account) {
