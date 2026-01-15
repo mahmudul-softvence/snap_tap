@@ -11,6 +11,7 @@ use App\Models\Subscription;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Models\User;
+use Carbon\Month;
 
 class AdminSubscriptionController extends Controller
 {
@@ -137,19 +138,15 @@ class AdminSubscriptionController extends Controller
         if ($subscription->stripe_status === 'active') {
             return 'Active';
         }
-
         if ($subscription->trial_ends_at && $subscription->trial_ends_at->isFuture()) {
             return 'Trial';
         }
-
         if ($subscription->ends_at && $subscription->ends_at->isPast()) {
             return 'Expired';
         }
-
         if ($subscription->cancel_at_period_end) {
             return 'Cancelled';
         }
-
         return 'Unknown';
     }
 
@@ -378,20 +375,81 @@ class AdminSubscriptionController extends Controller
         if (! $subscription) {
             return 'Inactive';
         }
-
         if ($subscription->ends_at && $subscription->ends_at->isPast()) {
             return 'Deleted';
         }
-
         if ($subscription->onTrial()) {
             return 'Pending';
         }
-
         if ($subscription->active()) {
             return 'Active';
         }
-
         return 'Inactive';
+    }
+
+    public function customerSubscription(Request $request, $id): JsonResponse
+    {
+        try{
+            $user = $request->user();
+            $subscription = $user->subscription('default');
+            $paymentMethods = $user->paymentMethods();
+
+            if (!$subscription) {
+                return response()->json([
+                    'success' => true,
+                    'data' => null,
+                    'message' => 'No active subscription'
+                ]);
+            }
+            
+            $priceId = $subscription->items->first()->stripe_price;
+            $plan = Plan::where('stripe_price_id', $priceId)->first();
+            $amount = $plan->price;
+            $renewOn = $subscription->renewOn();
+            $displayEndDate = $subscription->displayEndDate();
+            $displayStartDate = $subscription->displayStartDate();
+            $getPlan = $subscription->getPlan();
+            
+            $formattedMethods = [];
+            
+            foreach ($paymentMethods as $method) {
+                $formattedMethods[] = [
+                    'type' => $method->type,
+                    'card' => [
+                        'brand' => $method->card->brand,
+                        'last4' => $method->card->last4,
+                        'exp_month' => $method->card->exp_month,
+                        'exp_year' => $method->card->exp_year,
+                    ],
+                    'is_default' => $user->defaultPaymentMethod()?->id === $method->id,
+                ];
+            }
+
+            $data = [
+                'plan' => $getPlan,
+                'stripe_status' => $subscription->stripe_status,
+                'billing_cycle' => $plan->interval,
+                'monthly_rate' => $amount,
+                'start' => $displayStartDate?->format('Y-m-d'),
+                'ends' => $displayEndDate?->format('Y-m-d'),
+                'renew_on' =>  $renewOn->format('Y-m-d'),
+                'monthly_renewal' => $plan->interval,
+                'active' => $subscription->active(),
+                'card_info' =>  $formattedMethods,
+            ];
+
+        return response()->json([
+            'success' => true,
+            'data' => $data
+        ]);
+  
+        } catch (\Throwable $e){
+             return response()->json([
+                'success' => false,
+                'message' => 'Failed to get customer subscription',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 
 }
