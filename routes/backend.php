@@ -5,7 +5,7 @@ use App\Http\Controllers\SettingController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Backend\AdminPlanController;
 use App\Http\Controllers\Backend\AdminSubscriptionController;
-
+use App\Http\Controllers\Backend\UserProfileManageController;
 
     Route::controller(UserProfileController::class)->group(function () {
         Route::put('admin-profile/update', 'adminProfileUpdate')->middleware(['role:super_admin','auth:sanctum']);
@@ -26,4 +26,11 @@ use App\Http\Controllers\Backend\AdminSubscriptionController;
         Route::delete('/admin/subscriptions/delete/{id}', [AdminSubscriptionController::class, 'deleteSubscription']);
         Route::get('admin/customers', [AdminSubscriptionController::class, 'getCustomerList']);
         Route::get('admin/customers/subscription/{id}', [AdminSubscriptionController::class, 'customerSubscription']);
+    });
+
+
+
+    //user profile details
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::get('/admin-user-profile-show/{id}', [UserProfileManageController::class, 'userDetailsShow']);
     });
