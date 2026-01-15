@@ -317,6 +317,22 @@ class AdminSubscriptionController extends Controller
                 };
             }
 
+            $allowedSortColumns = ['created_at', 'name', 'email'];
+            $allowedDirections  = ['asc', 'desc'];
+
+            $sortBy        = $request->get('sort_by', 'created_at');
+            $sortDirection = strtolower($request->get('sort', 'desc'));
+
+            if (! in_array($sortBy, $allowedSortColumns)) {
+                $sortBy = 'created_at';
+            }
+
+            if (! in_array($sortDirection, $allowedDirections)) {
+                $sortDirection = 'desc';
+            }
+
+            $query->orderBy($sortBy, $sortDirection);
+
             $customers = $query
                 ->latest()
                 ->paginate($request->get('per_page', 10))
@@ -332,7 +348,7 @@ class AdminSubscriptionController extends Controller
                             'email' => $user->email,
                             'phone' => $user->phone,
                         ],
-                        'plan' => $plan?->name ?? '—',
+                        'plan' => $plan?->name,
                         'status' => $this->resolveCustomerStatus($subscription),
                         'created_at' => $user->created_at->toDateTimeString(),
                     ];
@@ -342,17 +358,17 @@ class AdminSubscriptionController extends Controller
                 'success' => true,
                 'message' => 'Customer list loaded successfully',
                 'data' => $customers,
+                'meta' => [
+                    'sort_by' => $sortBy,
+                    'sort' => $sortDirection,
+                ],
             ]);
 
         } catch (\Throwable $e) {
-
-            Log::error('Customer List Error', [
-                'error' => $e->getMessage(),
-            ]);
-
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to load customers',
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -377,6 +393,5 @@ class AdminSubscriptionController extends Controller
 
         return 'Inactive';
     }
-
 
 }
