@@ -53,7 +53,7 @@ class Subscription extends CashierSubscription
             $trialType = $this->trial_type ?? 'free';
             return ucfirst($trialType) . ' Trial - ' . $planName;
         }
-        
+
         if ($this->active()) {
            return $planName;
         }
