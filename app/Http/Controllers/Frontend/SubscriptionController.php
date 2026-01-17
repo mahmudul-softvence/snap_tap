@@ -8,6 +8,7 @@ use App\Models\Plan;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\JsonResponse;
 use Stripe\Stripe;
+use Stripe\SetupIntent;
 use Stripe\PaymentIntent;
 use Stripe\Exception\ApiErrorException;
 
@@ -80,11 +81,10 @@ class SubscriptionController extends Controller
         }
     } 
 
-    public function startFreeTrial(Request $request): JsonResponse
+    public function createSetupIntent(Request $request): JsonResponse
     {
         $request->validate([
             'plan_id' => 'required|exists:plans,id',
-            'payment_method_id' => 'required|string',
         ]);
 
         try {
@@ -94,87 +94,128 @@ class SubscriptionController extends Controller
             if (! $plan->hasTrial()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'This plan does not offer a free trial',
+                    'message' => 'This plan does not support free trials',
                 ], 400);
             }
 
             if ($user->subscribed('default')) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'User already has an active subscription',
+                    'message' => 'User already has a subscription',
                 ], 400);
             }
 
             if (! $user->hasStripeId()) {
                 $user->createAsStripeCustomer();
             }
-            
-            return $this->processFreeTrialWithSetupIntent(
-                $user,
-                $plan,
-                $request->payment_method_id
-            );
 
-        } catch (\Exception $e) {
+            $setupIntent = $user->createSetupIntent([
+                'usage' => 'off_session',
+                'automatic_payment_methods' => [
+                    'enabled' => true,
+                    'allow_redirects' => 'never',
+                ],
+                'metadata' => [
+                    'purpose' => 'free_trial',
+                    'plan_id' => $plan->id,
+                    'user_id' => $user->id,
+                ],
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'client_secret' => $setupIntent->client_secret,
+                'setup_intent_id' => $setupIntent->id,
+            ]);
+
+        } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to start free trial',
+                'message' => 'Failed to initialize trial',
                 'error' => $e->getMessage(),
             ], 500);
         }
     }
 
-    private function processFreeTrialWithSetupIntent($user, $plan, $paymentMethodId): JsonResponse
+    
+
+    public function startFreeTrial(Request $request): JsonResponse
     {
-        $setupIntent = $user->createSetupIntent([
-            'payment_method' => $paymentMethodId,
-            'confirm' => true,
-            'usage' => 'off_session',
-
-            'automatic_payment_methods' => [
-                'enabled' => true,
-                'allow_redirects' => 'never',
-            ],
-
-            'metadata' => [
-                'purpose' => 'free_trial',
-                'plan_id' => $plan->id,
-            ],
+        $request->validate([
+            'plan_id' => 'required|exists:plans,id',
+            'setup_intent_id' => 'required|string',
         ]);
 
-        if ($setupIntent->status === 'requires_action') {
+        try {
+            $user = $request->user();
+            $plan = Plan::findOrFail($request->plan_id);
+
+            if ($user->subscribed('default')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Already subscribed',
+                ], 400);
+            }
+
+            Stripe::setApiKey(config('cashier.secret'));
+            $setupIntent = SetupIntent::retrieve($request->setup_intent_id);
+
+            if ($setupIntent->customer !== $user->stripe_id) {
+                throw new \Exception('Invalid SetupIntent owner');
+            }
+
+            if ($setupIntent->status === 'requires_action') {
+                return response()->json([
+                    'success' => true,
+                    'requires_action' => true,
+                    'flow' => 'free_trial',
+                    'data' => [
+                        'client_secret' => $setupIntent->client_secret,
+                        'setup_intent_id' => $setupIntent->id,
+                    ],
+                ]);
+            }
+
+            if ($setupIntent->status !== 'succeeded') {
+                throw new \Exception('Card verification failed');
+            }
+
+            $paymentMethodId = $setupIntent->payment_method;
+
+            $user->addPaymentMethod($paymentMethodId);
+            $user->updateDefaultPaymentMethod($paymentMethodId);
+
+            $subscription = $user
+                ->newSubscription('default', $plan->stripe_price_id)
+                ->trialDays($plan->trial_days)
+                ->create();
+
             return response()->json([
                 'success' => true,
-                'requires_action' => true,
-                'flow' => 'free_trial',
+                'message' => 'Free trial started successfully',
                 'data' => [
-                    'client_secret' => $setupIntent->client_secret,
-                    'setup_intent_id' => $setupIntent->id,
+                    'subscription_id' => $subscription->id,
+                    'stripe_subscription_id' => $subscription->stripe_id,
+                    'trial_ends_at' => $subscription->trial_ends_at,
+                    'auto_renew' => true,
+                    'amount_charged_now' => 0,
                 ],
             ]);
+
+        } catch (ApiErrorException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Stripe error',
+                'error' => $e->getMessage(),
+            ], 500);
+
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to start trial',
+                'error' => $e->getMessage(),
+            ], 500);
         }
-
-        if ($setupIntent->status !== 'succeeded') {
-            throw new \Exception('Card verification failed');
-        }
-
-        $user->addPaymentMethod($paymentMethodId);
-        $user->updateDefaultPaymentMethod($paymentMethodId);
-
-        $subscription = $user->newSubscription('default', $plan->stripe_price_id)
-            ->trialDays($plan->trial_days)
-            ->create();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Free trial started successfully',
-            'data' => [
-                'subscription_id' => $subscription->id,
-                'trial_ends_at' => $subscription->trial_ends_at,
-                'auto_renew' => true,
-                'amount_charged_now' => 0,
-            ],
-        ]);
     }
 
     public function createPaymentIntent(Request $request): JsonResponse
@@ -196,14 +237,11 @@ class SubscriptionController extends Controller
             'amount' => (int) ($plan->price * 100),
             'currency' => strtolower($plan->currency ?? 'usd'),
             'customer' => $user->stripe_id,
-
             'automatic_payment_methods' => [
                 'enabled' => true,
                 'allow_redirects' => 'never',
             ],
-
             'setup_future_usage' => 'off_session',
-
             'metadata' => [
                 'purpose' => 'subscription_initial_payment',
                 'plan_id' => $plan->id,
