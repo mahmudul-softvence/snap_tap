@@ -74,6 +74,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::controller(UserProfileController::class)->group(function () {
         Route::get('user-profile/show', 'showProfile');
         Route::put('user-profile/update', 'update');
+        Route::get('user-profile/integration', 'integration');
+        Route::put('user-profile/business-account/status', 'toggleIntegrationStatus');
     });
 
     // Reviews

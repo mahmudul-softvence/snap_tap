@@ -12,8 +12,8 @@ use App\Http\Controllers\Backend\UserProfileManageController;
     });
 
     Route::middleware('role:super_admin','auth:sanctum')->group(function () {
-        Route::get('/settings', [SettingController::class, 'index']);
-        Route::put('/settings/update', [SettingController::class, 'updateSettings']);
+        Route::get('/admin/settings', [SettingController::class, 'index']);
+        Route::put('/admin/settings/update', [SettingController::class, 'updateSettings']);
     });
 
     //ADMIN PLAN AND SUBSCRIPTION.
@@ -32,5 +32,8 @@ use App\Http\Controllers\Backend\UserProfileManageController;
 
     //user profile details
     Route::middleware('auth:sanctum')->group(function () {
-        Route::get('/admin-user-profile-show/{id}', [UserProfileManageController::class, 'userDetailsShow']);
+        Route::get('/admin/user-profile-show/{id}', [UserProfileManageController::class, 'userDetailsShow']);
+        Route::put('/admin/user-profile-Update/{id}', [UserProfileManageController::class, 'userDetailsUpdate']);
+        Route::get('/admin/user-profile-integration/{id}', [UserProfileManageController::class, 'userIntegrationDetails']);
+        Route::put('/admin/user-profile-integration-status-update/{id}', [UserProfileManageController::class, 'userIntegrationStatusUpdate']);
     });

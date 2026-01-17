@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Frontend;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\BusinessProfile;
+use App\Models\UserBusinessAccount;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -86,13 +87,96 @@ class UserProfileController extends Controller
                 'b_logo'    => $b_logo,
             ]);
         }
+        $user->refresh()->load('businessProfile');
         return response()->json([
             'success' => true,
             'message' => 'Profile updated successfully',
             'user' => $user,
-            'business' => isset($business) ? $business : null
+            // 'business' => isset($business) ? $business : null
         ]);
     }
+
+    public function integration()
+    {
+        $user = User::with('businessAccounts')->find(Auth::id());
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User not found'
+            ], 404);
+        }
+
+        $accounts = $user->businessAccounts;
+
+        return response()->json([
+            'success' => true,
+            'message' => $accounts->isEmpty() ? 'No business accounts found' : 'Business accounts retrieved',
+            'business_accounts' => $accounts
+        ]);
+    }
+
+
+    public function toggleIntegrationStatus(Request $request)
+    {
+        $user = Auth::user();
+
+        $request->validate([
+            'business_account_id' => 'required|exists:user_business_accounts,id',
+            'status'              => 'required|in:connected,disconnect',
+        ]);
+
+        $businessAccount = UserBusinessAccount::where('id', $request->business_account_id)
+            ->where('user_id', $user->id)
+            ->first();
+
+        if (!$businessAccount) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Business account not found or unauthorized'
+            ], 404);
+        }
+
+        $businessAccount->update([
+            'status' => $request->status
+        ]);
+
+        $businessAccount->refresh();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Status updated successfully',
+            'business_account' => $businessAccount
+        ], 200);
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
     public function adminProfileUpdate(Request $request)

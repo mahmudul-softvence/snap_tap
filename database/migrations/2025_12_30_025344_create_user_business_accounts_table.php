@@ -24,7 +24,7 @@ return new class extends Migration
             $table->timestamp('token_expires_at')->nullable();
 
             $table->json('meta_data')->nullable();
-            $table->string('status')->default('connected');
+            $table->enum('status', ['connected', 'disconnect'])->default('connected');
 
             $table->timestamps();
 
