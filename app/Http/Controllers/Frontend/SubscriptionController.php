@@ -217,6 +217,10 @@ class SubscriptionController extends Controller
                         ],
                     ]);
 
+            if (! $autoRenew) {
+                $subscription->cancelAtPeriodEnd();
+             }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Free trial started successfully',
@@ -343,7 +347,7 @@ class SubscriptionController extends Controller
 
             $subscription = $user
                 ->newSubscription('default', $plan->stripe_price_id)
-                ->create($paymentMethodId, [
+                ->create(null, [
                     'metadata' => [
                         'plan_id' => $plan->id,
                         'auto_renew' => $autoRenew ? 'yes' : 'no',
@@ -491,6 +495,7 @@ class SubscriptionController extends Controller
                     ];
                 }),
             ]);
+            
         } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
