@@ -137,19 +137,18 @@ class SubscriptionController extends Controller
         }
     }
 
-    
-
     public function startFreeTrial(Request $request): JsonResponse
     {
         $request->validate([
             'plan_id' => 'required|exists:plans,id',
             'setup_intent_id' => 'required|string',
+            'auto_renew' => 'required|boolean',
         ]);
 
         try {
             $user = $request->user();
             $plan = Plan::findOrFail($request->plan_id);
-
+            
             if ($user->subscribed('default')) {
                 return response()->json([
                     'success' => false,
@@ -157,38 +156,66 @@ class SubscriptionController extends Controller
                 ], 400);
             }
 
-            Stripe::setApiKey(config('cashier.secret'));
-            $setupIntent = SetupIntent::retrieve($request->setup_intent_id);
+            return $this->startTrial(
+                $user,
+                $plan,
+                $request->setup_intent_id,
+                $request->auto_renew
+            );
 
-            if ($setupIntent->customer !== $user->stripe_id) {
-                throw new \Exception('Invalid SetupIntent owner');
-            }
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to process purchase',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
 
-            if ($setupIntent->status === 'requires_action') {
-                return response()->json([
-                    'success' => true,
-                    'requires_action' => true,
-                    'flow' => 'free_trial',
-                    'data' => [
-                        'client_secret' => $setupIntent->client_secret,
-                        'setup_intent_id' => $setupIntent->id,
-                    ],
-                ]);
+    private function startTrial($user, Plan $plan, string $setup_intent_id, bool $autoRenew): JsonResponse
+    {
+        try {
+                Stripe::setApiKey(config('cashier.secret'));
+                $setupIntent = SetupIntent::retrieve($setup_intent_id);
+
+                if ($setupIntent->customer !== $user->stripe_id) {
+                    throw new \Exception('Invalid SetupIntent owner');
+                }
+
+                if ($setupIntent->status === 'requires_action') {
+                    return response()->json([
+                        'success' => true,
+                        'requires_action' => true,
+                        'flow' => 'free_trial',
+                        'data' => [
+                            'client_secret' => $setupIntent->client_secret,
+                            'setup_intent_id' => $setupIntent->id,
+                        ],
+                    ]);
             }
 
             if ($setupIntent->status !== 'succeeded') {
                 throw new \Exception('Card verification failed');
             }
-
             $paymentMethodId = $setupIntent->payment_method;
 
-            $user->addPaymentMethod($paymentMethodId);
+            if (! collect($user->paymentMethods())->contains('id', $paymentMethodId)) {
+                $user->addPaymentMethod($paymentMethodId);
+            }
+
             $user->updateDefaultPaymentMethod($paymentMethodId);
 
             $subscription = $user
                 ->newSubscription('default', $plan->stripe_price_id)
                 ->trialDays($plan->trial_days)
-                ->create();
+                ->create(null, [
+                        'metadata' => [
+                            'plan_id'         => (string) $plan->id,
+                            'setup_intent_id' => $setup_intent_id,
+                            'flow'            => 'free_trial',
+                            'auto_renew' => $autoRenew ? 'yes' : 'no' 
+                        ],
+                    ]);
 
             return response()->json([
                 'success' => true,
