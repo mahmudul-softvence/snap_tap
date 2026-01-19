@@ -21,7 +21,7 @@ class UserProfileManageController extends Controller
 
         $user = User::with('businessProfile')->find($id);
 
-        if (!$user) {
+        if (!$user) { 
             return response()->json([
                 'success' => false,
                 'message' => 'User not found'
@@ -34,7 +34,7 @@ class UserProfileManageController extends Controller
         ], 200);
     }
 
-    
+
     public function userDetailsUpdate(Request $request, $id)
     {
         $authUser = Auth::user();

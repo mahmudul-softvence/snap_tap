@@ -123,6 +123,14 @@ class FacebookController extends Controller
             ->where('status', 'connected')
             ->get();
 
+        if ($accounts->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No Facebook page connected',
+                'pages'   => []
+            ], 404);
+        }
+
         return response()->json([
             'success' => true,
             'pages' => $accounts,
