@@ -12,6 +12,7 @@ class GetReview extends Model
         'facebook_review_id',
         'open_graph_story_id',
         'reviewer_name',
+        'reviewer_image',
         'rating',
         'review_text',
         'status',

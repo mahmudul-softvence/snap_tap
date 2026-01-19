@@ -15,6 +15,7 @@ return new class extends Migration
             $table->string('facebook_review_id')->unique();
             $table->string('open_graph_story_id')->nullable();
             $table->string('reviewer_name')->nullable();
+            $table->string('reviewer_image')->nullable();
             $table->tinyInteger('rating')->nullable();
             $table->longText('review_text')->nullable();
             $table->enum('status', ['pending', 'replied', 'ai_replied'])->default('pending');

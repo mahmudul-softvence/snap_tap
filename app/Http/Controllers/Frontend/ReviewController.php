@@ -43,7 +43,7 @@ class ReviewController extends Controller
                 $response = Http::get(
                     "https://graph.facebook.com/v24.0/{$page->provider_account_id}/ratings",
                     [
-                        'fields' => 'reviewer,review_text,created_time,recommendation_type,open_graph_story{comments.limit(25){id,from,message,created_time}}',
+                        'fields' => 'reviewer{name,picture},review_text,created_time,recommendation_type,open_graph_story{comments.limit(25){id,from,message,created_time}}',
                         'access_token' => $page->access_token,
                     ]
                 )->json();

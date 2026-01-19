@@ -11,6 +11,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Http;
 use App\Jobs\ReplyToReviewJob;
+use App\Services\FacebookAvatarService;
 use Illuminate\Support\Facades\Log;
 
 class SyncPageReviewsJob implements ShouldQueue
@@ -21,11 +22,13 @@ class SyncPageReviewsJob implements ShouldQueue
 
     public function handle()
     {
+        $avatarService = new FacebookAvatarService('uploads/reviewers');
+
         $nextUrl = "https://graph.facebook.com/v24.0/{$this->account->provider_account_id}/ratings";
 
         do {
             $response = Http::get($nextUrl, [
-                'fields' => 'reviewer,rating,review_text,created_time,recommendation_type,open_graph_story',
+                'fields' => 'reviewer{name,picture},rating,review_text,created_time,recommendation_type,open_graph_story',
                 'access_token' => $this->account->access_token,
             ])->json();
 
@@ -40,11 +43,19 @@ class SyncPageReviewsJob implements ShouldQueue
                     default => null,
                 };
 
+                $reviewerAvatar = $avatarService->saveAvatar(
+                    $item['reviewer']['picture']['data']['url'] ?? null
+                ) ?? "https://ui-avatars.com/api/?name=" . urlencode($item['reviewer']['name'] ?? 'Unknown') . "&background=0d6efd&color=fff";
+
+
+
                 $review = GetReview::updateOrCreate(
                     ['facebook_review_id' => $reviewId],
                     [
                         'user_id' => $this->account->user_id,
                         'page_id' => $this->account->provider_account_id,
+                        'reviewer_name' => $item['reviewer']['name'] ?? 'Anonymous',
+                        'reviewer_image' => $reviewerAvatar,
                         'rating' => $rating,
                         'review_text' => $item['review_text']
                             ?? ($item['open_graph_story']['message'] ?? null),
