@@ -4,23 +4,20 @@ use App\Http\Controllers\Frontend\Auth\RegisterController;
 use App\Http\Controllers\Frontend\Auth\SocialiteController;
 use App\Http\Controllers\Frontend\FacebookController;
 use App\Http\Controllers\Frontend\GmbController;
-use App\Http\Controllers\Frontend\GmbMockVersionController;
 use App\Http\Controllers\Frontend\BasicSettingController;
 use App\Http\Controllers\Frontend\DashboardController;
 use App\Http\Controllers\Frontend\MessageTemplateController;
 use App\Http\Controllers\Frontend\QrController;
 use App\Http\Controllers\Frontend\ReviewReqController;
 use App\Http\Controllers\Frontend\UserProfileController;
-use App\Http\Controllers\Frontend\GoogleBusinessController;
 use App\Http\Controllers\Frontend\ReviewController;
 use App\Http\Controllers\Frontend\TwoFactorController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Frontend\PaymentMethodController;
 use App\Http\Controllers\Frontend\PlanController;
 use App\Http\Controllers\Frontend\SubscriptionController;
-use App\Services\GeminiService;
-use Illuminate\Support\Facades\Http;
-use LucianoTonet\GroqLaravel\Facades\Groq;
+use OpenAI\Laravel\Facades\OpenAI;
+
 
 Route::middleware('guest:sanctum')->group(function () {
 
@@ -179,31 +176,24 @@ Route::middleware('auth:sanctum')->group(function () {
 
 
 
+// Route::get('/test-ai-reply', function () {
+//     $response = OpenAI::chat()->create([
+//         'model' => 'gpt-5.2',
+//         'messages' => [
+//             [
+//                 'role' => 'user',
+//                 'content' => "Based on the following review, generate a short, easy-to-read, and polite reply that is between 20 to 40 words. Avoid personal information like the user's name, and keep the tone simple and professional.\n\nReview:Excelent Developer\n\nPlease generate one of the following types of responses: \n1. A positive reply if the review is praising our service or product. \n2. A negative reply if the review is critical or complaining about the service or product. \n3. A help request reply if the review is asking for support or assistance."
+//             ],
+//         ]
+//     ]);
 
+//     if (isset($response['choices'][0]['message']['content'])) {
+//         $replyText = $response['choices'][0]['message']['content'];
+//     } else {
+//         $replyText = 'Thank you for your review! We appreciate your feedback.';
+//     }
 
-
-
-Route::get('/test-ai-reply', function () {
-    $reviewText = "SVD Developers is an excellent and highly professional team. Their work quality, timely delivery, and client support are truly impressive. From the beginning to the end of the project, they communicate clearly and handle every requirement with great attention to detail.
-They are responsive, skilled, and very committed to delivering the best results. If you are looking for a reliable and trustworthy development team, SVD Developers is definitely a great choice. Highly recommended....!";
-
-    $model = 'openai/gpt-oss-20b';
-
-    $response = Groq::chat()->completions()->create([
-        'model' => $model,
-        'messages' => [
-            ['role' => 'user', 'content' => $reviewText],
-        ]
-    ]);
-
-    if (isset($response['choices'][0]['message']['content'])) {
-        $replyText = $response['choices'][0]['message']['content'];
-    } else {
-        $replyText = 'Sorry, there was an issue generating the reply.';
-    }
-
-    return response()->json([
-        'review' => $reviewText,
-        'reply' => $replyText,
-    ]);
-});
+//     return response()->json([
+//         'reply' => $replyText
+//     ]);
+// });

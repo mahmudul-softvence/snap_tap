@@ -12,6 +12,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Http;
 use LucianoTonet\GroqLaravel\Facades\Groq;
+use OpenAI\Laravel\Facades\OpenAI;
 
 class ReplyToReviewJob implements ShouldQueue
 {
@@ -26,14 +27,14 @@ class ReplyToReviewJob implements ShouldQueue
         }
 
 
-        // $aiAgent = AiAgent::where('user_id', $this->review->user_id)
-        //     ->where('is_active', true)
-        //     ->where('review_type', '>=', $this->review->rating)
-        //     ->first();
+        $aiAgent = AiAgent::where('user_id', $this->review->user_id)
+            ->where('is_active', true)
+            ->where('review_type', '>=', $this->review->rating)
+            ->first();
 
-        // if (!$aiAgent) {
-        //     return;
-        // }
+        if (!$aiAgent) {
+            return;
+        }
 
         $replyText = $this->generateReply($this->review->review_text);
 
@@ -56,10 +57,8 @@ class ReplyToReviewJob implements ShouldQueue
 
     protected function generateReply(string $reviewText): string
     {
-        $model = 'openai/gpt-oss-20b';
-
-        $response = Groq::chat()->completions()->create([
-            'model' => $model,
+        $response = OpenAI::chat()->create([
+            'model' => 'gpt-5.2',
             'messages' => [
                 [
                     'role' => 'user',

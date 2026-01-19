@@ -41,6 +41,7 @@ class RegisterController extends Controller
         $input['password'] = bcrypt($input['password']);
         $user = User::create($input);
         $user->assignRole('user');
+
         $user->basicSetting()->create();
 
         $token = $user->createToken('MyApp')->plainTextToken;
