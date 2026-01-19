@@ -151,15 +151,12 @@ class AdminSubscriptionController extends Controller
 
     public function changeSubscription(Request $request): JsonResponse
     {
-            $request->validate([
+        $request->validate([
             'subscription_id' => 'required|exists:subscriptions,id',
             'plan_id' => 'required|exists:plans,id',
         ]);
 
-        DB::beginTransaction();
-
         try {
-            
             $subscription = Subscription::with('items')->findOrFail($request->subscription_id);
             $newPlan = Plan::findOrFail($request->plan_id);
 
@@ -170,9 +167,16 @@ class AdminSubscriptionController extends Controller
                 ], 422);
             }
 
+            if (! $subscription->valid()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Subscription is not active',
+                ], 422);
+            }
+
             $currentItem = $subscription->items->first();
 
-            if ($currentItem?->stripe_price === $newPlan->stripe_price_id) {
+            if ($currentItem && $currentItem->stripe_price === $newPlan->stripe_price_id) {
                 return response()->json([
                     'success' => false,
                     'message' => 'User is already on this plan',
@@ -181,55 +185,75 @@ class AdminSubscriptionController extends Controller
 
             $subscription->swap($newPlan->stripe_price_id);
 
-            DB::commit();
-
             return response()->json([
                 'success' => true,
                 'message' => 'Subscription plan updated successfully',
+                'data' => [
+                    'subscription_id' => $subscription->id,
+                    'stripe_subscription_id' => $subscription->stripe_id,
+                    'status' => $subscription->stripe_status,
+                ],
             ]);
 
+        } catch (\Laravel\Cashier\Exceptions\IncompletePayment $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Payment action required',
+                'payment_intent' => $e->payment->id,
+                'client_secret' => $e->payment->client_secret,
+            ], 402);
+
         } catch (\Throwable $e) {
-
-            DB::rollBack();
-
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to change subscription plan',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
 
-    public function changeStatus(Request $request, int $id): JsonResponse
+  public function changeStatus(Request $request, int $id): JsonResponse
     {
         $request->validate([
             'action' => 'required|in:cancel,cancel_at_period_end,resume',
         ]);
 
-        DB::beginTransaction();
-
         try {
-
             $subscription = Subscription::findOrFail($id);
 
-            match($request->action) {
+            if (! $subscription->valid()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Subscription is not active',
+                ], 422);
+            }
+
+            match ($request->action) {
                 'cancel' => $subscription->cancelNow(),
                 'cancel_at_period_end' => $subscription->cancel(),
                 'resume' => $subscription->resume(),
-                default => null,
             };
-
-            DB::commit(); 
 
             return response()->json([
                 'success' => true,
                 'message' => 'Subscription status updated successfully',
-            ], 200);
+                'data' => [
+                    'subscription_id' => $subscription->id,
+                    'stripe_subscription_id' => $subscription->stripe_id,
+                    'status' => $subscription->stripe_status,
+                    'cancel_at_period_end' => $subscription->cancel_at_period_end,
+                ],
+            ]);
+
+        } catch (\Laravel\Cashier\Exceptions\IncompletePayment $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Payment action required to resume subscription',
+                'payment_intent' => $e->payment->id,
+                'client_secret' => $e->payment->client_secret,
+            ], 402);
 
         } catch (\Throwable $e) {
-
-            DB::rollBack();
-
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to update subscription status',
@@ -241,11 +265,13 @@ class AdminSubscriptionController extends Controller
     public function deleteSubscription(int $id): JsonResponse
     {
         try {
-            
-            DB::transaction(function () use ($id) {
+            $subscription = Subscription::with('items')->findOrFail($id);
 
-                $subscription = Subscription::with('items')->findOrFail($id);
+            if ($subscription->stripe_id && $subscription->valid()) {
+                $subscription->cancelNow();
+            }
 
+            DB::transaction(function () use ($subscription) {
                 $subscription->items()->delete();
                 $subscription->delete();
             });

@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Frontend;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Plan;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Http\JsonResponse;
 use Stripe\Stripe;
 use Stripe\SetupIntent;
@@ -433,6 +432,77 @@ class SubscriptionController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to convert trial',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function changeSubscription(Request $request): JsonResponse
+    {
+        $request->validate([
+            'plan_id' => 'required|exists:plans,id',
+        ]);
+
+        try {
+            $user = $request->user();
+            $subscription = $user->subscription('default');
+
+            if (! $subscription || ! $subscription->valid()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No active subscription found',
+                ], 422);
+            }
+
+            if ($subscription->cancelled()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cancelled subscriptions cannot be changed',
+                ], 422);
+            }
+
+            $newPlan = Plan::findOrFail($request->plan_id);
+
+            if (! $newPlan->stripe_price_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Selected plan is not available for billing',
+                ], 422);
+            }
+
+            $currentItem = $subscription->items->first();
+
+            if ($currentItem && $currentItem->stripe_price === $newPlan->stripe_price_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You are already on this plan',
+                ], 409);
+            }
+
+            $subscription->swap($newPlan->stripe_price_id);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Subscription plan updated successfully',
+                'data' => [
+                    'subscription_id' => $subscription->id,
+                    'new_plan' => $newPlan->name,
+                    'status' => $subscription->stripe_status,
+                ],
+            ]);
+
+        } catch (\Laravel\Cashier\Exceptions\IncompletePayment $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Payment action required',
+                'payment_intent' => $e->payment->id,
+                'client_secret' => $e->payment->client_secret,
+            ], 402);
+
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to change subscription plan',
                 'error' => $e->getMessage(),
             ], 500);
         }
