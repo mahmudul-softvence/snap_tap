@@ -137,6 +137,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/cancel', [SubscriptionController::class, 'cancel']);
         Route::post('/start-trial', [SubscriptionController::class, 'startFreeTrial']);
         Route::post('/convert-trial', [SubscriptionController::class, 'convertTrialToPaid']);
+        Route::patch('/Change-subscription', [SubscriptionController::class, 'changeSubscription']);
         Route::get('/billing-history', [SubscriptionController::class, 'billingHistory']);
     });
 });
