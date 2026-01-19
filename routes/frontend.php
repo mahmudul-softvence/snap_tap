@@ -133,11 +133,13 @@ Route::middleware('auth:sanctum')->group(function () {
     // Subscriptions for user
     Route::prefix('subscriptions')->group(function () {
         Route::get('/', [SubscriptionController::class, 'show']);
-        Route::post('/create-payment', [SubscriptionController::class, 'createPaymentIntent']);
+        Route::post('/create-payment-intent', [SubscriptionController::class, 'createPaymentIntent']);
+        Route::post('/setup-intent', [SubscriptionController::class, 'createSetupIntent']);
         Route::post('/buynow', [SubscriptionController::class, 'buyNow']);
         Route::post('/cancel', [SubscriptionController::class, 'cancel']);
         Route::post('/start-trial', [SubscriptionController::class, 'startFreeTrial']);
         Route::post('/convert-trial', [SubscriptionController::class, 'convertTrialToPaid']);
+        Route::patch('/Change-subscription', [SubscriptionController::class, 'changeSubscription']);
         Route::get('/billing-history', [SubscriptionController::class, 'billingHistory']);
     });
 });

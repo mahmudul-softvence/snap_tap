@@ -26,6 +26,8 @@ use App\Http\Controllers\Backend\UserProfileManageController;
         Route::delete('/admin/subscriptions/delete/{id}', [AdminSubscriptionController::class, 'deleteSubscription']);
         Route::get('admin/customers', [AdminSubscriptionController::class, 'getCustomerList']);
         Route::get('admin/customers/subscription/{id}', [AdminSubscriptionController::class, 'customerSubscription']);
+        Route::get('admin/customers/billing-history/{id}', [AdminSubscriptionController::class, 'billingHistory']);
+        Route::get('admin/customers/billing-history', [AdminSubscriptionController::class, 'allBillingHistory']);
     });
 
 

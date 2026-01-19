@@ -8,9 +8,7 @@ use Illuminate\Http\JsonResponse;
 
 class PaymentMethodController extends Controller
 {
-    /**
-     * Get user's payment methods
-     */
+
     public function index(Request $request): JsonResponse
     {
         try {
@@ -46,9 +44,6 @@ class PaymentMethodController extends Controller
         }
     }
 
-    /**
-     * Add new payment method
-     */
     public function store(Request $request): JsonResponse
     {
         $request->validate([
@@ -58,11 +53,8 @@ class PaymentMethodController extends Controller
         
         try {
             $user = $request->user();
-            
-            // Add payment method
             $paymentMethod = $user->addPaymentMethod($request->payment_method);
             
-            // Set as default if requested
             if ($request->boolean('set_as_default')) {
                 $user->updateDefaultPaymentMethod($request->payment_method);
             }
@@ -89,9 +81,6 @@ class PaymentMethodController extends Controller
         }
     }
 
-    /**
-     * Set default payment method
-     */
     public function setDefault(Request $request, $id): JsonResponse
     {
         try {
@@ -111,9 +100,6 @@ class PaymentMethodController extends Controller
         }
     }
 
-    /**
-     * Delete payment method
-     */
     public function destroy(Request $request, $id): JsonResponse
     {
         try {
@@ -127,7 +113,6 @@ class PaymentMethodController extends Controller
                 ], 404);
             }
             
-            // Don't allow deleting if it's the only payment method and user has active subscription
             if ($user->subscribed('default') && count($user->paymentMethods()) === 1) {
                 return response()->json([
                     'success' => false,

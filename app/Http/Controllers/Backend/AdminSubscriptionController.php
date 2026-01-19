@@ -6,19 +6,18 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Plan;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Log;
 use App\Models\Subscription;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Models\User;
-use Carbon\Month;
+use Illuminate\Support\Str;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class AdminSubscriptionController extends Controller
 {
     public function adminSubscriptionDashboard(Request $request): JsonResponse
     {
         try {
-
             $subscriptionQuery = Subscription::query()
                 ->with([
                     'user:id,name',
@@ -152,15 +151,12 @@ class AdminSubscriptionController extends Controller
 
     public function changeSubscription(Request $request): JsonResponse
     {
-            $request->validate([
+        $request->validate([
             'subscription_id' => 'required|exists:subscriptions,id',
             'plan_id' => 'required|exists:plans,id',
         ]);
 
-        DB::beginTransaction();
-
         try {
-            
             $subscription = Subscription::with('items')->findOrFail($request->subscription_id);
             $newPlan = Plan::findOrFail($request->plan_id);
 
@@ -171,9 +167,16 @@ class AdminSubscriptionController extends Controller
                 ], 422);
             }
 
+            if (! $subscription->valid()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Subscription is not active',
+                ], 422);
+            }
+
             $currentItem = $subscription->items->first();
 
-            if ($currentItem?->stripe_price === $newPlan->stripe_price_id) {
+            if ($currentItem && $currentItem->stripe_price === $newPlan->stripe_price_id) {
                 return response()->json([
                     'success' => false,
                     'message' => 'User is already on this plan',
@@ -182,55 +185,75 @@ class AdminSubscriptionController extends Controller
 
             $subscription->swap($newPlan->stripe_price_id);
 
-            DB::commit();
-
             return response()->json([
                 'success' => true,
                 'message' => 'Subscription plan updated successfully',
+                'data' => [
+                    'subscription_id' => $subscription->id,
+                    'stripe_subscription_id' => $subscription->stripe_id,
+                    'status' => $subscription->stripe_status,
+                ],
             ]);
 
+        } catch (\Laravel\Cashier\Exceptions\IncompletePayment $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Payment action required',
+                'payment_intent' => $e->payment->id,
+                'client_secret' => $e->payment->client_secret,
+            ], 402);
+
         } catch (\Throwable $e) {
-
-            DB::rollBack();
-
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to change subscription plan',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
 
-    public function changeStatus(Request $request, int $id): JsonResponse
+  public function changeStatus(Request $request, int $id): JsonResponse
     {
         $request->validate([
             'action' => 'required|in:cancel,cancel_at_period_end,resume',
         ]);
 
-        DB::beginTransaction();
-
         try {
-
             $subscription = Subscription::findOrFail($id);
 
-            match($request->action) {
+            if (! $subscription->valid()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Subscription is not active',
+                ], 422);
+            }
+
+            match ($request->action) {
                 'cancel' => $subscription->cancelNow(),
                 'cancel_at_period_end' => $subscription->cancel(),
                 'resume' => $subscription->resume(),
-                default => null,
             };
-
-            DB::commit(); 
 
             return response()->json([
                 'success' => true,
                 'message' => 'Subscription status updated successfully',
-            ], 200);
+                'data' => [
+                    'subscription_id' => $subscription->id,
+                    'stripe_subscription_id' => $subscription->stripe_id,
+                    'status' => $subscription->stripe_status,
+                    'cancel_at_period_end' => $subscription->cancel_at_period_end,
+                ],
+            ]);
+
+        } catch (\Laravel\Cashier\Exceptions\IncompletePayment $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Payment action required to resume subscription',
+                'payment_intent' => $e->payment->id,
+                'client_secret' => $e->payment->client_secret,
+            ], 402);
 
         } catch (\Throwable $e) {
-
-            DB::rollBack();
-
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to update subscription status',
@@ -242,11 +265,13 @@ class AdminSubscriptionController extends Controller
     public function deleteSubscription(int $id): JsonResponse
     {
         try {
-            
-            DB::transaction(function () use ($id) {
+            $subscription = Subscription::with('items')->findOrFail($id);
 
-                $subscription = Subscription::with('items')->findOrFail($id);
+            if ($subscription->stripe_id && $subscription->valid()) {
+                $subscription->cancelNow();
+            }
 
+            DB::transaction(function () use ($subscription) {
                 $subscription->items()->delete();
                 $subscription->delete();
             });
@@ -268,7 +293,6 @@ class AdminSubscriptionController extends Controller
     public function getCustomerList(Request $request): JsonResponse
     {
         try {
-
             $request->validate([
                 'search'   => 'nullable|string|max:255',
                 'status'   => 'nullable|in:active,inactive,pending,deleted',
@@ -387,10 +411,10 @@ class AdminSubscriptionController extends Controller
         return 'Inactive';
     }
 
-    public function customerSubscription(Request $request, $id): JsonResponse
+    public function customerSubscription(Int $id): JsonResponse
     {
         try{
-            $user = $request->user();
+            $user = User::findOrFail($id);
             $subscription = $user->subscription('default');
             $paymentMethods = $user->paymentMethods();
 
@@ -448,6 +472,191 @@ class AdminSubscriptionController extends Controller
                 'success' => false,
                 'message' => 'Failed to get customer subscription',
                 'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function billingHistory(Request $request, Int $id ): JsonResponse
+    {
+        try {
+             $request->validate([
+                'search'   => 'nullable|string|max:255',
+                'sort_by'  => 'nullable|in:date,amount,invoice',
+                'sort'     => 'nullable|in:asc,desc',
+                'per_page' => 'nullable|integer|min:1|max:50',
+            ]);
+
+
+            $user = User::findOrFail($id);
+            $subscription = $user->subscription('default');
+            $plan = $subscription->getPlan();
+
+            $invoices = collect($user->invoices());
+
+            if ($request->filled('search')) {
+                $search = strtolower($request->search);
+
+                $invoices = $invoices->filter(function ($invoice) use ($search) {
+                    return Str::contains(strtolower($invoice->number), $search)
+                        || Str::contains(strtolower($invoice->description ?? ''), $search)
+                        || Str::contains(strtolower($invoice->payment_method_details['type'] ?? ''), $search);
+                });
+            }
+
+            $sortBy = $request->get('sort_by', 'date');
+            $direction = $request->get('sort', 'desc');
+
+            $invoices = $invoices->sortBy(function ($invoice) use ($sortBy) {
+                return match ($sortBy) {
+                    'amount'  => $invoice->total,
+                    'invoice' => $invoice->number,
+                    default   => $invoice->created,
+                };
+            }, SORT_REGULAR, $direction === 'desc');
+
+            $perPage = $request->get('per_page', 10);
+            $currentPage = LengthAwarePaginator::resolveCurrentPage();
+            $pagedData = $invoices->slice(($currentPage - 1) * $perPage, $perPage)->values();
+
+            $paginatedInvoices = new LengthAwarePaginator(
+                $pagedData,
+                $invoices->count(),
+                $perPage,
+                $currentPage,
+                ['path' => request()->url(), 'query' => request()->query()]
+            );
+
+            $data = $paginatedInvoices->through(function ($invoice) use ($plan) {
+                return [
+                    'invoice_id' => $invoice->number,
+                    'date'       => $invoice->date()->format('M d, Y'),
+                    'plan'       => $plan ?? '—',
+                    'method'     => ucfirst($invoice->payment_method_details['type'] ?? 'Card'),
+                    'amount'     => '$' . number_format($invoice->total / 100, 2),
+                    'download'   => $invoice->invoice_pdf,
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Billing history loaded successfully',
+                'data'    => $data,
+            ]);
+
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load billing history',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function allBillingHistory(Request $request): JsonResponse
+    {
+        try {
+            $request->validate([
+                'search'   => 'nullable|string|max:255',
+                'sort_by'  => 'nullable|in:date,amount,invoice',
+                'sort'     => 'nullable|in:asc,desc',
+                'per_page' => 'nullable|integer|min:1|max:50',
+            ]);
+
+            $planMap = Plan::pluck('name', 'stripe_price_id');
+            $users = User::all()->filter(fn ($user) => count($user->invoices()) > 0);
+
+            $invoices = collect();
+
+            foreach ($users as $user) {
+                foreach ($user->invoices() as $invoice) {
+
+                    $stripePriceId = null;
+
+                    foreach ($invoice->lines->data as $line) {
+                        if (!empty($line->pricing?->price_details?->price)) {
+                            $stripePriceId = $line->pricing->price_details->price;
+                            break;
+                        }
+                    }
+
+                    $planName = $stripePriceId ? ($planMap[$stripePriceId] ?? '—') : '—';
+
+                        $invoices->push([
+                            'user_name' => $user->name,
+                            'user_id'   => $user->id,
+                            'invoice'   => $invoice->number,
+                            'amount'    => $invoice->total,
+                            'date'      => $invoice->created,
+                            'method'    => $invoice->payment_method_details['type'] ?? 'card',
+                            'plan'      => $planName ?? '-',
+                            'download'  => $invoice->invoice_pdf,
+                        ]);
+                }
+           }
+
+            if ($request->filled('search')) {
+                $search = strtolower($request->search);
+
+                $invoices = $invoices->filter(function ($invoice) use ($search) {
+                    return Str::contains(strtolower($invoice['user_name']), $search)
+                        || Str::contains(strtolower($invoice['invoice']), $search)
+                        || Str::contains(strtolower($invoice['plan']), $search)
+                        || Str::contains(strtolower($invoice['method']), $search);
+                });
+            }
+
+            $sortBy = $request->get('sort_by', 'date');
+            $direction = $request->get('sort', 'desc');
+
+            $invoices = $invoices->sortBy(
+                fn ($invoice) => match ($sortBy) {
+                    'amount'  => $invoice['amount'],
+                    'invoice' => $invoice['invoice'],
+                    default   => $invoice['date'],
+                },
+                SORT_REGULAR,
+                $direction === 'desc'
+            );
+
+            $perPage = (int) $request->get('per_page', 10);
+            $currentPage = LengthAwarePaginator::resolveCurrentPage();
+
+            $pagedData = $invoices
+                ->slice(($currentPage - 1) * $perPage, $perPage)
+                ->values();
+
+            $paginator = new LengthAwarePaginator(
+                $pagedData,
+                $invoices->count(),
+                $perPage,
+                $currentPage,
+                [
+                    'path'  => $request->url(),
+                    'query' => $request->query(),
+                ]
+            );
+
+            $data = $paginator->through(fn ($invoice) => [
+                'name'     => $invoice['user_name'],
+                'invoice'  => $invoice['invoice'],
+                'plan'     => $invoice['plan'],
+                'amount'   => '$' . number_format($invoice['amount'] / 100, 2),
+                'method'   => ucfirst($invoice['method']),
+                'date'     => date('M d, h:i A', $invoice['date']),
+                'download' => $invoice['download'],
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Customer billing history loaded successfully',
+                'data'    => $data,
+            ], 200);
+
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load billing history',
+                'error'   => $e->getMessage(),
             ], 500);
         }
     }
