@@ -64,20 +64,19 @@ class SendReviewMessageJob implements ShouldQueue
         }
 
         if ($this->sendSms && $review->phone) {
+
             try {
-                $sid = env('TWILIO_SID');
-                $token = env('TWILIO_AUTH_TOKEN');
-                $fromNumber = env('TWILIO_PHONE_NUMBER');
 
-                $client = new Client($sid, $token);
+                $account_sid = getenv("TWILIO_SID");
+                $auth_token = getenv("TWILIO_TOKEN");
+                $twilio_number = getenv("TWILIO_FROM");
 
-                $client->messages->create(
-                    $review->phone,
-                    [
-                        'from' => $fromNumber,
-                        'body' => $review->message,
-                    ]
-                );
+                $client = new Client($account_sid, $auth_token);
+
+                $client->messages->create($review->phone, [
+                    'from' => $twilio_number,
+                    'body' => $review->message
+                ]);
 
                 $sent = true;
             } catch (Exception $e) {
@@ -97,7 +96,7 @@ class SendReviewMessageJob implements ShouldQueue
                     $this->messageCount + 1,
                     $this->nextMessageHours,
                     $this->maxRetries
-                )->delay(now()->addMinute($this->nextMessageHours));
+                )->delay(now()->addHour($this->nextMessageHours));
             }
         }
     }

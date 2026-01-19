@@ -16,6 +16,8 @@
         "laravel/socialite": "^5.24",
         "laravel/tinker": "^2.10.1",
         "lucianotonet/groq-laravel": "^1.0",
+        "openai-php/client": "^0.18.0",
+        "openai-php/laravel": "^0.18.0",
         "simplesoftwareio/simple-qrcode": "^4.2",
         "spatie/laravel-permission": "^6.24",
         "twilio/sdk": "^8.10"

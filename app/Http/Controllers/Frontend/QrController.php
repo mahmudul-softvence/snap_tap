@@ -77,7 +77,7 @@ class QrController extends Controller
     /**
      * Get QR code for the authenticated user by provider
      */
-    public function get_qr($provider): JsonResponse
+    public function get_qr($provider)
     {
         $user = Auth::user();
 
@@ -103,7 +103,7 @@ class QrController extends Controller
                     'name' => $user->name,
                     'email' => $user->email,
                 ],
-                'qr_code' =>  asset($qrRecord->qr_code),
+                'qr_code' => asset($qrRecord->qr_code),
             ],
         ], 200);
     }

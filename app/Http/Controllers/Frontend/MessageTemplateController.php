@@ -145,6 +145,6 @@ class MessageTemplateController extends Controller
      */
     private function authorizeTemplate(MessageTemplate $template)
     {
-        abort_if($template->user_id !== Auth::id(), 403, 'Unauthorized');
+        abort_if($template->user_id != Auth::id(), 403, 'Unauthorized');
     }
 }
