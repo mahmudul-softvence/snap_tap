@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Frontend;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Plan;
+use App\Models\Review;
 use Illuminate\Http\JsonResponse;
 use Stripe\Stripe;
 use Stripe\SetupIntent;
@@ -19,6 +20,8 @@ class SubscriptionController extends Controller
             $user = $request->user();
             $subscription = $user->subscription('default');
             $paymentMethods = $user->paymentMethods();
+            $review_request = Review::get()->where('user_id', $user->id)
+                ->count();
 
             if (!$subscription) {
                 return response()->json([
@@ -27,16 +30,16 @@ class SubscriptionController extends Controller
                     'message' => 'No active subscription'
                 ]);
             }
-            
+
             $priceId = $subscription->items->first()->stripe_price;
             $plan = Plan::where('stripe_price_id', $priceId)->first();
             $renewOn = $subscription->renewOn();
             $displayEndDate = $subscription->displayEndDate();
             $displayStartDate = $subscription->displayStartDate();
             $getPlan = $subscription->getPlan();
-            
+
             $formattedMethods = [];
-            
+
             foreach ($paymentMethods as $method) {
                 $formattedMethods[] = [
                     'type' => $method->type,
@@ -50,12 +53,16 @@ class SubscriptionController extends Controller
                 ];
             }
 
+
+
+
+
             $data = [
                 'name' => $getPlan,
                 'stripe_status' => $subscription->stripe_status,
                 'plan' => $getPlan,
                 'price' => $plan->price,
-                'total_request' => $plan->request_credits,    
+                'total_request' => $plan->request_credits,
                 'trial_started_at' => $subscription->trial_started_at,
                 'start' => $displayStartDate?->format('Y-m-d'),
                 'ends' => $displayEndDate?->format('Y-m-d'),
@@ -66,8 +73,9 @@ class SubscriptionController extends Controller
                 'active' => $subscription->active(),
                 'feature' => $plan->features,
                 'card_info' =>  $formattedMethods,
+                'review_request' => $review_request,
             ];
-            
+
             return response()->json([
                 'success' => true,
                 'data' => $data
@@ -79,7 +87,7 @@ class SubscriptionController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
-    } 
+    }
 
     public function createSetupIntent(Request $request): JsonResponse
     {
@@ -127,7 +135,6 @@ class SubscriptionController extends Controller
                 'client_secret' => $setupIntent->client_secret,
                 'setup_intent_id' => $setupIntent->id,
             ]);
-
         } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
@@ -148,7 +155,7 @@ class SubscriptionController extends Controller
         try {
             $user = $request->user();
             $plan = Plan::findOrFail($request->plan_id);
-            
+
             if ($user->subscribed('default')) {
                 return response()->json([
                     'success' => false,
@@ -162,7 +169,6 @@ class SubscriptionController extends Controller
                 $request->setup_intent_id,
                 $request->auto_renew
             );
-
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -175,23 +181,23 @@ class SubscriptionController extends Controller
     private function startTrial($user, Plan $plan, string $setup_intent_id, bool $autoRenew): JsonResponse
     {
         try {
-                Stripe::setApiKey(config('cashier.secret'));
-                $setupIntent = SetupIntent::retrieve($setup_intent_id);
+            Stripe::setApiKey(config('cashier.secret'));
+            $setupIntent = SetupIntent::retrieve($setup_intent_id);
 
-                if ($setupIntent->customer !== $user->stripe_id) {
-                    throw new \Exception('Invalid SetupIntent owner');
-                }
+            if ($setupIntent->customer !== $user->stripe_id) {
+                throw new \Exception('Invalid SetupIntent owner');
+            }
 
-                if ($setupIntent->status === 'requires_action') {
-                    return response()->json([
-                        'success' => true,
-                        'requires_action' => true,
-                        'flow' => 'free_trial',
-                        'data' => [
-                            'client_secret' => $setupIntent->client_secret,
-                            'setup_intent_id' => $setupIntent->id,
-                        ],
-                    ]);
+            if ($setupIntent->status === 'requires_action') {
+                return response()->json([
+                    'success' => true,
+                    'requires_action' => true,
+                    'flow' => 'free_trial',
+                    'data' => [
+                        'client_secret' => $setupIntent->client_secret,
+                        'setup_intent_id' => $setupIntent->id,
+                    ],
+                ]);
             }
 
             if ($setupIntent->status !== 'succeeded') {
@@ -209,17 +215,17 @@ class SubscriptionController extends Controller
                 ->newSubscription('default', $plan->stripe_price_id)
                 ->trialDays($plan->trial_days)
                 ->create(null, [
-                        'metadata' => [
-                            'plan_id'         => (string) $plan->id,
-                            'setup_intent_id' => $setup_intent_id,
-                            'flow'            => 'free_trial',
-                            'auto_renew' => $autoRenew ? 'yes' : 'no' 
-                        ],
-                    ]);
+                    'metadata' => [
+                        'plan_id'         => (string) $plan->id,
+                        'setup_intent_id' => $setup_intent_id,
+                        'flow'            => 'free_trial',
+                        'auto_renew' => $autoRenew ? 'yes' : 'no'
+                    ],
+                ]);
 
             if (! $autoRenew) {
                 $subscription->cancelAtPeriodEnd();
-             }
+            }
 
             return response()->json([
                 'success' => true,
@@ -232,14 +238,12 @@ class SubscriptionController extends Controller
                     'amount_charged_now' => 0,
                 ],
             ]);
-
         } catch (ApiErrorException $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Stripe error',
                 'error' => $e->getMessage(),
             ], 500);
-
         } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
@@ -312,7 +316,6 @@ class SubscriptionController extends Controller
                 $request->payment_intent_id,
                 $request->auto_renew
             );
-
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -321,7 +324,7 @@ class SubscriptionController extends Controller
             ], 500);
         }
     }
-    
+
     private function processImmediatePurchase($user, Plan $plan, string $paymentIntentId, bool $autoRenew): JsonResponse
     {
         try {
@@ -370,14 +373,12 @@ class SubscriptionController extends Controller
                     'current_period_end' => $subscription->currentPeriodEnd()?->toDateTimeString(),
                 ],
             ]);
-
         } catch (ApiErrorException $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Stripe error occurred',
                 'error' => $e->getMessage(),
             ], 500);
-
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -421,14 +422,12 @@ class SubscriptionController extends Controller
                 'success' => true,
                 'message' => 'Trial converted to paid subscription',
             ]);
-
         } catch (\Stripe\Exception\CardException $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Payment failed',
                 'error' => $e->getMessage(),
             ], 402);
-
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -491,7 +490,6 @@ class SubscriptionController extends Controller
                     'status' => $subscription->stripe_status,
                 ],
             ]);
-
         } catch (\Laravel\Cashier\Exceptions\IncompletePayment $e) {
             return response()->json([
                 'success' => false,
@@ -499,7 +497,6 @@ class SubscriptionController extends Controller
                 'payment_intent' => $e->payment->id,
                 'client_secret' => $e->payment->client_secret,
             ], 402);
-
         } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
@@ -513,16 +510,16 @@ class SubscriptionController extends Controller
     {
         try {
             $user = $request->user();
-            
+
             if (!$user->subscribed('default')) {
                 return response()->json([
                     'success' => false,
                     'message' => 'No active subscription found'
                 ], 400);
             }
-            
+
             $subscription = $user->subscription('default')->cancel();
-            
+
             return response()->json([
                 'success' => true,
                 'message' => 'Subscription cancelled successfully',
@@ -555,7 +552,7 @@ class SubscriptionController extends Controller
                 'success' => true,
                 'message' => 'Subscriptions fetched successfully',
                 'data' => $subscriptions->through(function ($subscription) {
-                 $plan = Plan::where('stripe_price_id', $subscription->stripe_price)->first();
+                    $plan = Plan::where('stripe_price_id', $subscription->stripe_price)->first();
 
                     return [
                         'id' => $subscription->id,
@@ -566,7 +563,6 @@ class SubscriptionController extends Controller
                     ];
                 }),
             ]);
-            
         } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
@@ -575,5 +571,4 @@ class SubscriptionController extends Controller
             ], 500);
         }
     }
-
 }
