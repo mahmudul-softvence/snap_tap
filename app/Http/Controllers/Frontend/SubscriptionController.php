@@ -53,16 +53,12 @@ class SubscriptionController extends Controller
                 ];
             }
 
-
-
-
-
             $data = [
                 'name' => $getPlan,
                 'stripe_status' => $subscription->stripe_status,
                 'plan' => $getPlan,
                 'price' => $plan->price,
-                'total_request' => $plan->request_credits,
+                'total_request' => $subscription->onTrial()? "5" : $plan->request_credits,
                 'trial_started_at' => $subscription->trial_started_at,
                 'start' => $displayStartDate?->format('Y-m-d'),
                 'ends' => $displayEndDate?->format('Y-m-d'),
