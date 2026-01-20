@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Frontend\Auth\ForgotPasswordController;
 use App\Http\Controllers\Frontend\Auth\RegisterController;
 use App\Http\Controllers\Frontend\Auth\SocialiteController;
 use App\Http\Controllers\Frontend\FacebookController;
@@ -16,10 +17,16 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Frontend\PaymentMethodController;
 use App\Http\Controllers\Frontend\PlanController;
 use App\Http\Controllers\Frontend\SubscriptionController;
-use OpenAI\Laravel\Facades\OpenAI;
 
 
 Route::middleware('guest:sanctum')->group(function () {
+
+    Route::controller(ForgotPasswordController::class)->group(function () {
+        Route::post('forgot-password', 'forgotPassword');
+        Route::post('verify-otp', 'verifyOtp');
+        Route::post('reset-password', 'resetPassword');
+    });
+
 
     Route::controller(SocialiteController::class)->group(function () {
         Route::get('/auth/{provider}/redirect', 'redirect');

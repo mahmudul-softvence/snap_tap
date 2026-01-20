@@ -66,7 +66,6 @@ class ReviewReqController extends Controller
             'user_id' => Auth::id(),
         ]);
 
-
         /**
          * For Createing job for sheduling the task
          */
@@ -192,6 +191,6 @@ class ReviewReqController extends Controller
      */
     private function authorizeReview(Review $review)
     {
-        abort_if($review->user_id !== Auth::id(), 403, 'Unauthorized');
+        abort_if($review->user_id != Auth::id(), 403, 'Unauthorized');
     }
 }

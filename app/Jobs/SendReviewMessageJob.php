@@ -50,9 +50,18 @@ class SendReviewMessageJob implements ShouldQueue
 
         $sent = false;
 
+        $reviewLink = url('api/change_review_status/' . $review->unique_id);
+
         if ($this->sendEmail && $review->email) {
             try {
-                Mail::html($review->message, function ($message) use ($review) {
+                $emailBody = nl2br(e($review->message)) . '
+                <br><br>
+                <a href="' . $reviewLink . '" style="color:#2563eb;font-weight:600;">
+                    Click here if you reviewd
+                </a>
+            ';
+
+                Mail::html($emailBody, function ($message) use ($review) {
                     $message->to($review->email)
                         ->subject('We’d Love Your Review!');
                 });
@@ -64,18 +73,16 @@ class SendReviewMessageJob implements ShouldQueue
         }
 
         if ($this->sendSms && $review->phone) {
-
             try {
-
-                $account_sid = getenv("TWILIO_SID");
-                $auth_token = getenv("TWILIO_TOKEN");
+                $account_sid   = getenv("TWILIO_SID");
+                $auth_token    = getenv("TWILIO_TOKEN");
                 $twilio_number = getenv("TWILIO_FROM");
 
                 $client = new Client($account_sid, $auth_token);
 
                 $client->messages->create($review->phone, [
                     'from' => $twilio_number,
-                    'body' => $review->message
+                    'body' => $review->message . "\n\nClick here if you reviewd: " . $reviewLink
                 ]);
 
                 $sent = true;
@@ -83,6 +90,7 @@ class SendReviewMessageJob implements ShouldQueue
                 Log::error('SMS failed: ' . $e->getMessage());
             }
         }
+
 
         if ($sent) {
             $review->retries += 1;
