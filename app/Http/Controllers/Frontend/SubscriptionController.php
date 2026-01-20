@@ -30,7 +30,6 @@ class SubscriptionController extends Controller
             
             $priceId = $subscription->items->first()->stripe_price;
             $plan = Plan::where('stripe_price_id', $priceId)->first();
-            $amount = $plan->price;
             $renewOn = $subscription->renewOn();
             $displayEndDate = $subscription->displayEndDate();
             $displayStartDate = $subscription->displayStartDate();
@@ -55,7 +54,8 @@ class SubscriptionController extends Controller
                 'name' => $getPlan,
                 'stripe_status' => $subscription->stripe_status,
                 'plan' => $getPlan,
-                'price' => $amount,
+                'price' => $plan->price,
+                'total_request' => $plan->request_credits,    
                 'trial_started_at' => $subscription->trial_started_at,
                 'start' => $displayStartDate?->format('Y-m-d'),
                 'ends' => $displayEndDate?->format('Y-m-d'),
@@ -64,6 +64,7 @@ class SubscriptionController extends Controller
                 'canceled' => $subscription->canceled(),
                 'on_grace_period' => $subscription->onGracePeriod(),
                 'active' => $subscription->active(),
+                'feature' => $plan->features,
                 'card_info' =>  $formattedMethods,
             ];
             

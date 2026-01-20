@@ -18,6 +18,11 @@ class AdminSubscriptionController extends Controller
     public function adminSubscriptionDashboard(Request $request): JsonResponse
     {
         try {
+             $now = Carbon::now();
+
+            [$thisMonthStart, $thisMonthEnd] = $this->monthRange($now);
+            [$lastMonthStart, $lastMonthEnd] = $this->monthRange($now->copy()->subMonth());
+
             $subscriptionQuery = Subscription::query()
                 ->with([
                     'user:id,name',
@@ -64,7 +69,7 @@ class AdminSubscriptionController extends Controller
                             $q->where('name', 'like', "%{$search}%");
                         });
                 });
-           }
+            }
   
             $subscriptionQuery->orderBy(
                 'created_at',
@@ -110,6 +115,9 @@ class AdminSubscriptionController extends Controller
             $cancellations = Subscription::whereNotNull('ends_at')
                 ->whereMonth('ends_at', now()->month)
                 ->count();
+            
+            $thisMonthRevenue = $this->revenueForRange($thisMonthStart, $thisMonthEnd);
+            $lastMonthRevenue = $this->revenueForRange($lastMonthStart, $lastMonthEnd);
 
             return response()->json([
                 'success' => true,
@@ -120,6 +128,12 @@ class AdminSubscriptionController extends Controller
                      'totalActive' => $totalActive,
                      'renewals' => $renewals,
                     'cancellations' => $cancellations,
+                    'metrics' => [
+                    'monthlyRevenue' => [
+                        'value' => $thisMonthRevenue,
+                        'change_percent' => $this->percentChange($thisMonthRevenue, $lastMonthRevenue),
+                      ],
+                    ],
                 ],
             ], 200);
 
@@ -147,6 +161,44 @@ class AdminSubscriptionController extends Controller
             return 'Cancelled';
         }
         return 'Unknown';
+    }
+
+    /**
+     * Calculate percentage change month-over-month
+     */
+    private function percentChange(float $current, float $previous): float
+    {
+        if ($previous <= 0) {
+            return $current > 0 ? 100 : 0;
+        }
+        return round((($current - $previous) / $previous) * 100, 2);
+    }
+
+    /**
+     * Get month date range
+     */
+    private function monthRange(Carbon $date): array
+    {
+        return [
+            $date->copy()->startOfMonth(),
+            $date->copy()->endOfMonth(),
+        ];
+    }
+
+    /**
+     * Calculate revenue for a date range
+     */
+    private function revenueForRange(Carbon $start, Carbon $end): float
+    {
+        return Subscription::activeLike()
+            ->whereBetween('created_at', [$start, $end])
+            ->with('items.plan')
+            ->get()
+            ->sum(fn ($subscription) =>
+                $subscription->items->sum(fn ($item) =>
+                    ($item->quantity ?? 1) * ($item->plan->price ?? 0)
+                )
+            );
     }
 
     public function changeSubscription(Request $request): JsonResponse
