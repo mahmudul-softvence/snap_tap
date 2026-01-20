@@ -14,6 +14,7 @@ use Illuminate\Validation\ValidationException;
 
 class RegisterController extends Controller
 {
+
     /**
      * Register API
      *
