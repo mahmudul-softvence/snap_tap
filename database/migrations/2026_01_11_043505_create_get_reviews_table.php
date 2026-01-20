@@ -14,7 +14,6 @@ return new class extends Migration
             $table->string('page_id');
             $table->string('provider');
             $table->string('provider_review_id')->unique();
-            $table->string('facebook_review_id')->unique();
             $table->string('open_graph_story_id')->nullable();
             $table->string('reviewer_name')->nullable();
             $table->string('reviewer_image')->nullable();
