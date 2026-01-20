@@ -12,7 +12,8 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->string('page_id');
-            $table->string('facebook_review_id')->unique();
+            $table->string('provider');
+            $table->string('provider_review_id')->unique();
             $table->string('open_graph_story_id')->nullable();
             $table->string('reviewer_name')->nullable();
             $table->string('reviewer_image')->nullable();
@@ -21,6 +22,8 @@ return new class extends Migration
             $table->enum('status', ['pending', 'replied', 'ai_replied'])->default('pending');
             $table->foreignId('ai_agent_id')->nullable()->constrained('ai_agents')->nullOnDelete();
             $table->string('reviewed_at');
+            $table->string('review_reply_id')->nullable();
+            $table->text('review_reply_text')->nullable();
             $table->string('replied_at')->nullable();
 
             $table->timestamps();
