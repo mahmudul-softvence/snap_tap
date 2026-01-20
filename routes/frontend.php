@@ -164,7 +164,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/reviews', [ReviewController::class, 'index']);
     // Reply to Review and Delete Reply
     Route::post('/reviews/reply', [ReviewController::class, 'reply']);
-    Route::delete('/reviews/reply', [ReviewController::class, 'deleteReply']);
+    Route::delete('/reviews/reply-delete', [ReviewController::class, 'deleteReply']);
 });
 
 
