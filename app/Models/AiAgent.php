@@ -9,7 +9,7 @@ class AiAgent extends Model
     protected $fillable = [
         'user_id',
         'name',
-        'language',
+        'content',
         'method',
         'review_type',
         'is_active',

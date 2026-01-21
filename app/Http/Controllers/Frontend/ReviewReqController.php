@@ -7,7 +7,6 @@ use App\Jobs\SendReviewMessageJob;
 use App\Models\Review;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 
@@ -16,17 +15,36 @@ class ReviewReqController extends Controller
     /**
      * List all review requests of the logged-in user
      */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
+        $perPage = $request->input('per_page', 10);
 
-        $total_request = Review::where('user_id', Auth::id())->count();
+        $query = Review::where('user_id', Auth::id());
 
-        $reviews = Review::where('user_id', Auth::id())->latest()->paginate(10);
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('email', 'like', "%{$search}%")
+                    ->orWhere('phone', 'like', "%{$search}%")
+                    ->orWhere('name', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->input('sort') === 'oldest') {
+            $query->orderBy('created_at', 'asc');
+        } else {
+            $query->orderBy('created_at', 'desc');
+        }
+
+        $reviews = $query->paginate($perPage);
 
         return response()->json([
             'success' => true,
-            'data' => $reviews,
-            'total_request' => $total_request
+            'data' => $reviews
         ]);
     }
 
@@ -36,7 +54,7 @@ class ReviewReqController extends Controller
     public function create(Request $request): JsonResponse
     {
 
-        if (true) { //$request->user->onFreeTrial()
+        if (false) { //$request->user->onFreeTrial()
 
             $reviewCount = auth()->user()->reviews()->count();
 
@@ -47,8 +65,6 @@ class ReviewReqController extends Controller
                 ], 403);
             }
         }
-
-
 
         $validated = $request->validate([
             'name'        => 'required|string|max:255',
@@ -72,18 +88,18 @@ class ReviewReqController extends Controller
         $review = Review::find($review->id);
         $userSettings = $review->user->basicSetting;
 
-        $firstMessageDelay = $userSettings->msg_after_checkin;
-        $nextMessageDelay = $userSettings->next_message_time;
-        $maxRetries = $userSettings->re_try_time;
+        $firstMessageDelay = (int) $userSettings->msg_after_checkin;
+        $nextMessageDelay  = (int) $userSettings->next_message_time;
+        $maxRetries        = (int) $userSettings->re_try_time;
 
         SendReviewMessageJob::dispatch(
             $review->id,
-            $request->sent_email,
-            $request->sent_sms,
+            (bool) $request->sent_email,
+            (bool) $request->sent_sms,
             1,
             $nextMessageDelay,
             $maxRetries
-        )->delay(now()->addMinute($firstMessageDelay));
+        )->delay(now()->addHour($firstMessageDelay));
 
 
 
@@ -119,14 +135,8 @@ class ReviewReqController extends Controller
         $this->authorizeReview($review);
 
         $validated = $request->validate([
-            'name'        => 'sometimes|string|max:255',
-            'email'       => 'sometimes|email|max:255',
-            'phone'       => 'nullable|string|max:20',
             'status'      => ['sometimes', Rule::in(['sent', 'reviewed', 'reminded'])],
-            'message'     => 'nullable|string',
-            'sent_sms'    => 'boolean',
-            'sent_email'  => 'boolean',
-            'retries'     => 'integer|min:0',
+            'message'     => 'nullable|string'
         ]);
 
         $review->update($validated);
@@ -135,23 +145,6 @@ class ReviewReqController extends Controller
             'success' => true,
             'message' => 'Review request updated successfully',
             'data' => $review,
-        ]);
-    }
-
-    /**
-     * Delete a review request
-     */
-    public function destroy($id): JsonResponse
-    {
-        $review = Review::findOrFail($id);
-
-        $this->authorizeReview($review);
-
-        $review->delete();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Review request deleted successfully',
         ]);
     }
 

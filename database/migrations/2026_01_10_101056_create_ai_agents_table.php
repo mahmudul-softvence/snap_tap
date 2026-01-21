@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->string('name');
-            $table->string('language');
+            $table->longText('content')->nullable();
             $table->string('method');
             $table->integer('review_type');
             $table->boolean('is_active')->default(true);

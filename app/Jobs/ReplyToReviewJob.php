@@ -30,16 +30,19 @@ class ReplyToReviewJob implements ShouldQueue
         $aiAgent = AiAgent::where('user_id', $this->review->user_id)
             ->where('is_active', true)
             ->where('review_type', '>=', $this->review->rating)
+            ->where('method', $this->review->provider)
+            ->where('is_active', 1)
             ->first();
 
         if (!$aiAgent) {
             return;
         }
 
-        $replyText = $this->generateReply($this->review->review_text);
+        $replyText = $this->generateReply($this->review->review_text, $aiAgent->content);
 
         $account = UserBusinessAccount::where('user_id', $this->review->user_id)
             ->where('provider_account_id', $this->review->page_id)
+            ->where('status', 'connected')
             ->first();
 
         if (!$account) return;
@@ -55,14 +58,14 @@ class ReplyToReviewJob implements ShouldQueue
         ]);
     }
 
-    protected function generateReply(string $reviewText): string
+    protected function generateReply(string $reviewText, string $aiAgentContent): string
     {
         $response = OpenAI::chat()->create([
             'model' => 'gpt-5.2',
             'messages' => [
                 [
                     'role' => 'user',
-                    'content' => "Based on the following review, generate a short, easy-to-read, and polite reply that is between 20 to 40 words. Avoid personal information like the user's name, and keep the tone simple and professional.\n\nReview: $reviewText\n\nPlease generate one of the following types of responses: \n1. A positive reply if the review is praising our service or product. \n2. A negative reply if the review is critical or complaining about the service or product. \n3. A help request reply if the review is asking for support or assistance."
+                    "Instructions: $aiAgentContent\nReview: $reviewText \n\nNote: Do NOT include any personal information such as names, addresses, emails, or phone numbers. Only generate polite, professional feedback based on the review. Also make sure the reply in same language as the review [most important.]. Keep the reply between 20 to 40 words.",
                 ],
             ]
         ]);

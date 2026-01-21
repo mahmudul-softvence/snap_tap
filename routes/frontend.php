@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Frontend\AiAgentController;
 use App\Http\Controllers\Frontend\Auth\ForgotPasswordController;
 use App\Http\Controllers\Frontend\Auth\RegisterController;
 use App\Http\Controllers\Frontend\Auth\SocialiteController;
@@ -89,6 +90,15 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('review_req/update/{id}', 'update');
         Route::get('review_req/show/{id}', 'show');
         Route::delete('review_req/delete/{id}', 'destroy');
+    });
+
+    // Ai Agent Routes
+    Route::controller(AiAgentController::class)->group(function () {
+        Route::get('ai_agents', 'index');
+        Route::post('ai_agents/create', 'create');
+        Route::put('ai_agents/update/{id}', 'update');
+        Route::get('ai_agents/show/{id}', 'show');
+        Route::delete('ai_agents/delete/{id}', 'destroy');
     });
 
     // Basic Settings
