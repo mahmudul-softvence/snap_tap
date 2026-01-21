@@ -55,16 +55,8 @@ class SyncPageReviewsJob implements ShouldQueue
 
                     $reviewerAvatar = $avatarService->saveAvatar(
                         $item['reviewer']['picture']['data']['url'] ?? null,
-                        $oldAvatar ? str_replace(url('/').'/', '', $oldAvatar) : null // relative path
+                        $oldAvatar ? str_replace(url('/').'/', '', $oldAvatar) : null
                     ) ?? "https://ui-avatars.com/api/?name=" . urlencode($reviewerName) . "&background=0d6efd&color=fff";
-
-
-                    // $reviewerAvatar = $avatarService->saveAvatar(
-                    //     $item['reviewer']['picture']['data']['url'] ?? null
-                    // ) ?? "https://ui-avatars.com/api/?name=" . urlencode($reviewerName) . "&background=0d6efd&color=fff";
-
-
-
 
                     $rating = $item['rating'] ?? (($item['recommendation_type'] ?? 'positive') === 'negative' ? 1 : 5);
 
@@ -80,14 +72,6 @@ class SyncPageReviewsJob implements ShouldQueue
                                 $replyText = $comment['message'] ?? null;
                                 $repliedAt = $comment['created_time'] ?? null;
                                 $status = 'replied';
-
-                                // Log::info('Facebook Review First Reply Captured', [
-                                //     'review_id' => $reviewId,
-                                //     'reply_id' => $replyId,
-                                //     'reply_text' => $replyText,
-                                //     'replied_at' => $repliedAt,
-                                // ]);
-
                                 break;
                             }
                         }
