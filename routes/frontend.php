@@ -169,6 +169,7 @@ Route::get('/facebook/callback', [FacebookController::class, 'callback']);
 // Facebook
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/facebook/auth-url', [FacebookController::class, 'authUrl']);
+    Route::get('/facebook/session', [FacebookController::class, 'getSessionData']);
     Route::post('/facebook/connect-page', [FacebookController::class, 'connectPage']);
     Route::get('/facebook/pages', [FacebookController::class, 'pages']);
     Route::get('/facebook/reviews', [FacebookController::class, 'reviews']);

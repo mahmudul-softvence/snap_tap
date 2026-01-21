@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Session;
 
 class FacebookController extends Controller
 {
@@ -39,52 +40,58 @@ class FacebookController extends Controller
     public function callback(Request $request)
     {
         if (!$request->has('code')) {
-            return view('frontend.facebook_page', [
+            return response()->json([
                 'success' => false,
-                'user_id' => auth()->id(),
                 'message' => 'Authorization code missing',
-                'pages' => []
-            ]);
+            ], 400);
         }
 
-        $tokenResponse = Http::get(
-            'https://graph.facebook.com/v17.0/oauth/access_token',
-            [
-                'client_id'     => config('services.facebook.page_client_id'),
-                'client_secret' => config('services.facebook.page_client_secret'),
-                'redirect_uri'  => config('services.facebook.page_redirect'),
-                'code'          => $request->code,
-            ]
-        )->json();
+        // Get Access Token
+        $tokenResponse = Http::get('https://graph.facebook.com/v17.0/oauth/access_token', [
+            'client_id'     => config('services.facebook.page_client_id'),
+            'client_secret' => config('services.facebook.page_client_secret'),
+            'redirect_uri'  => config('services.facebook.page_redirect'),
+            'code'          => $request->code,
+        ])->json();
 
         if (!isset($tokenResponse['access_token'])) {
-            return view('frontend.facebook_page', [
+            return response()->json([
                 'success' => false,
-                'user_id' => auth()->id(),
                 'message' => 'Failed to retrieve access token',
-                'pages' => []
-            ]);
+            ], 400);
         }
 
         $userAccessToken = $tokenResponse['access_token'];
 
+        // Get Pages
         $pagesResponse = Http::withToken($userAccessToken)
             ->get('https://graph.facebook.com/v17.0/me/accounts')
             ->json();
 
-        if (empty($pagesResponse['data'])) {
-            return view('frontend.facebook_page', [
-                'success' => false,
-                'message' => 'No Facebook pages found',
-                'pages' => []
-            ]);
-        }
+        // Encode pages safely
+        $pagesJson = urlencode(json_encode($pagesResponse['data']));
 
-        return view('frontend.facebook_page', [
-            'success' => true,
+        // Redirect to frontend with query params
+        $query = http_build_query([
             'user_id' => auth()->id(),
-            'pages' => $pagesResponse['data'],
-            'user_access_token' => $userAccessToken
+            'access_token' => $userAccessToken,
+            'pages' => $pagesJson,
+        ]);
+
+        return redirect(config('app.frontend_url') . "/dashboard/facebook/callback?$query");
+    }
+
+
+    /**
+     * Optional: API endpoint for Next.js to get session data safely
+     */
+    public function getSessionData(Request $request)
+    {
+        return response()->json([
+            'success' => true,
+            'user_id' => Session::get('facebook_user_id'),
+            'user_access_token' => Session::get('facebook_access_token'),
+            'pages' => Session::get('facebook_pages'),
         ]);
     }
 
