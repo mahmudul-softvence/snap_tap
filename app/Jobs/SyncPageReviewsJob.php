@@ -42,9 +42,29 @@ class SyncPageReviewsJob implements ShouldQueue
                     if (!$reviewId) continue;
 
                     $reviewerName = $item['reviewer']['name'] ?? 'Facebook User';
+
+
+                    $oldAvatar = null;
+                    $existingReview = GetReview::where('provider', 'facebook')
+                        ->where('provider_review_id', $item['open_graph_story']['id'] ?? 0)
+                        ->first();
+
+                    if ($existingReview) {
+                        $oldAvatar = $existingReview->reviewer_image;
+                    }
+
                     $reviewerAvatar = $avatarService->saveAvatar(
-                        $item['reviewer']['picture']['data']['url'] ?? null
+                        $item['reviewer']['picture']['data']['url'] ?? null,
+                        $oldAvatar ? str_replace(url('/').'/', '', $oldAvatar) : null // relative path
                     ) ?? "https://ui-avatars.com/api/?name=" . urlencode($reviewerName) . "&background=0d6efd&color=fff";
+
+
+                    // $reviewerAvatar = $avatarService->saveAvatar(
+                    //     $item['reviewer']['picture']['data']['url'] ?? null
+                    // ) ?? "https://ui-avatars.com/api/?name=" . urlencode($reviewerName) . "&background=0d6efd&color=fff";
+
+
+
 
                     $rating = $item['rating'] ?? (($item['recommendation_type'] ?? 'positive') === 'negative' ? 1 : 5);
 
@@ -151,7 +171,7 @@ class SyncPageReviewsJob implements ShouldQueue
     }
 
 
-    
+
     // public function handle()
     // {
     //     $avatarService = new FacebookAvatarService('uploads/reviewers');
