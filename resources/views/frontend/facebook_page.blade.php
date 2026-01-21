@@ -35,7 +35,7 @@
         <div class="alert alert-danger">{{ $message ?? 'No pages found' }}</div>
     @endif
 </div>
-
+ 
 <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 <script>
     const form = document.getElementById('connectPageForm');
