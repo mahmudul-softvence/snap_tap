@@ -10,13 +10,47 @@ use PragmaRX\Google2FA\Google2FA;
 class TwoFactorController extends Controller
 {
 
+    // public function setup(Request $request)
+    // {
+    //     $user = $request->user();
+
+    //     $google2fa = new Google2FA();
+
+    //     $secret = $google2fa->generateSecretKey();
+
+    //     $otpauthUrl = $google2fa->getQRCodeUrl(
+    //         config('app.name'),
+    //         $user->email,
+    //         $secret
+    //     );
+
+    //     $user->update([
+    //         'two_factor_secret' => encrypt($secret)
+    //     ]);
+
+    //     $qrCodeImageUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data='
+    //         . urlencode($otpauthUrl);
+
+    //     return response()->json([
+    //         'qr_code_url' => $qrCodeImageUrl,
+    //         'secret'      => $secret
+    //     ]);
+    // }
+
+
     public function setup(Request $request)
     {
         $user = $request->user();
-
         $google2fa = new Google2FA();
 
+
         $secret = $google2fa->generateSecretKey();
+
+
+        $user->update([
+            'two_factor_secret' => encrypt($secret)
+        ]);
+
 
         $otpauthUrl = $google2fa->getQRCodeUrl(
             config('app.name'),
@@ -24,19 +58,19 @@ class TwoFactorController extends Controller
             $secret
         );
 
-        $user->update([
-            'two_factor_secret' => encrypt($secret)
-        ]);
 
-        $qrCodeImageUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data='
-            . urlencode($otpauthUrl);
+        $qrCode = QrCode::format('png')->size(250)->generate($otpauthUrl);
+        $qrCodeDataUri = 'data:image/png;base64,' . base64_encode($qrCode);
+
 
         return response()->json([
-            'qr_code_url' => $qrCodeImageUrl,
-            'secret'      => $secret
+            'qr_code' => $qrCodeDataUri,
+            'secret'  => $secret
         ]);
     }
-    
+
+
+
     // public function setup(Request $request)
     // {
     //     $google2fa = new Google2FA();
