@@ -131,8 +131,9 @@ Route::middleware('auth:sanctum')->group(function () {
 //     Route::post('/gmb/reply', [GmbMockVersionController::class, 'reply']);
 // });
 
-
+// For Subscription & plan.
 Route::middleware('auth:sanctum')->group(function () {
+    
     // Payment Methods
     Route::prefix('payment-methods')->group(function () {
         Route::get('/', [PaymentMethodController::class, 'index']);
@@ -143,6 +144,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Plans
     Route::get('/plans', [PlanController::class, 'index']);
+    Route::get('/plans/single/{id}', [PlanController::class, 'showSinglePlan']);
 
     // Subscriptions for user
     Route::prefix('subscriptions')->group(function () {

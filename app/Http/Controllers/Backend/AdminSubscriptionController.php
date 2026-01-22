@@ -18,7 +18,7 @@ class AdminSubscriptionController extends Controller
     public function adminSubscriptionDashboard(Request $request): JsonResponse
     {
         try {
-             $now = Carbon::now();
+            $now = Carbon::now();
 
             [$thisMonthStart, $thisMonthEnd] = $this->monthRange($now);
             [$lastMonthStart, $lastMonthEnd] = $this->monthRange($now->copy()->subMonth());
@@ -119,20 +119,57 @@ class AdminSubscriptionController extends Controller
             $thisMonthRevenue = $this->revenueForRange($thisMonthStart, $thisMonthEnd);
             $lastMonthRevenue = $this->revenueForRange($lastMonthStart, $lastMonthEnd);
 
+            
+            $thisMonthActive = Subscription::where('stripe_status', 'active')
+                ->whereDate('created_at', '<=', $thisMonthEnd)
+                ->count();
+
+            $lastMonthActive = Subscription::where('stripe_status', 'active')
+                ->whereDate('created_at', '<=', $lastMonthEnd)
+                ->count();
+
+            $thisMonthRenewals = Subscription::where('stripe_status', 'active')
+                ->whereBetween('updated_at', [$thisMonthStart, $thisMonthEnd])
+                ->count();
+
+            $lastMonthRenewals = Subscription::where('stripe_status', 'active')
+                ->whereBetween('updated_at', [$lastMonthStart, $lastMonthEnd])
+                ->count();
+
+            $thisMonthCancellations = Subscription::whereNotNull('ends_at')
+                ->whereBetween('ends_at', [$thisMonthStart, $thisMonthEnd])
+                ->count();
+
+            $lastMonthCancellations = Subscription::whereNotNull('ends_at')
+                ->whereBetween('ends_at', [$lastMonthStart, $lastMonthEnd])
+                ->count();
+
             return response()->json([
                 'success' => true,
                 'message' => 'Admin subscription dashboard loaded successfully',
                 'data' => [
                     'subscriptions' => $subscriptions,
-                     'monthlyRevenue' => $monthlyRevenue,
-                     'totalActive' => $totalActive,
-                     'renewals' => $renewals,
+                    'monthlyRevenue' => $monthlyRevenue,
+                    'totalActive' => $totalActive,
+                    'renewals' => $renewals,
                     'cancellations' => $cancellations,
                     'metrics' => [
-                    'monthlyRevenue' => [
-                        'value' => $thisMonthRevenue,
-                        'change_percent' => $this->percentChange($thisMonthRevenue, $lastMonthRevenue),
-                      ],
+                        'monthlyRevenue' => [
+                            'value' => $thisMonthRevenue,
+                            'change_percent' => $this->percentChange($thisMonthRevenue, $lastMonthRevenue),
+                        ],
+                        'totalActive' => [
+                            'value' => $thisMonthActive,
+                            'change_percent' => $this->percentChange($thisMonthActive, $lastMonthActive),
+                        ],
+                        'renewals' => [
+                            'value' => $thisMonthRenewals,
+                            'change_percent' => $this->percentChange($thisMonthRenewals, $lastMonthRenewals),
+                        ],
+                        'cancellations' => [
+                            'value' => $thisMonthCancellations,
+                            'change_percent' => $this->percentChange($thisMonthCancellations, $lastMonthCancellations),
+                        ],
                     ],
                 ],
             ], 200);
@@ -537,7 +574,6 @@ class AdminSubscriptionController extends Controller
                 'sort'     => 'nullable|in:asc,desc',
                 'per_page' => 'nullable|integer|min:1|max:50',
             ]);
-
 
             $user = User::findOrFail($id);
             $subscription = $user->subscription('default');

@@ -60,7 +60,6 @@ class AdminPlanController extends Controller
             ], 500);
         }
     }
-
      
     public function store(Request $request)
     {

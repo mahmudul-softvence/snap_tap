@@ -76,6 +76,7 @@ class SubscriptionController extends Controller
                 'success' => true,
                 'data' => $data
             ]);
+
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -129,8 +130,8 @@ class SubscriptionController extends Controller
             return response()->json([
                 'success' => true,
                 'client_secret' => $setupIntent->client_secret,
-                'setup_intent_id' => $setupIntent->id,
             ]);
+
         } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
@@ -165,6 +166,7 @@ class SubscriptionController extends Controller
                 $request->setup_intent_id,
                 $request->auto_renew
             );
+
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -191,7 +193,6 @@ class SubscriptionController extends Controller
                     'flow' => 'free_trial',
                     'data' => [
                         'client_secret' => $setupIntent->client_secret,
-                        'setup_intent_id' => $setupIntent->id,
                     ],
                 ]);
             }
@@ -199,6 +200,7 @@ class SubscriptionController extends Controller
             if ($setupIntent->status !== 'succeeded') {
                 throw new \Exception('Card verification failed');
             }
+
             $paymentMethodId = $setupIntent->payment_method;
 
             if (! collect($user->paymentMethods())->contains('id', $paymentMethodId)) {
@@ -227,19 +229,19 @@ class SubscriptionController extends Controller
                 'success' => true,
                 'message' => 'Free trial started successfully',
                 'data' => [
-                    'subscription_id' => $subscription->id,
-                    'stripe_subscription_id' => $subscription->stripe_id,
                     'trial_ends_at' => $subscription->trial_ends_at,
                     'auto_renew' => true,
                     'amount_charged_now' => 0,
                 ],
             ]);
+
         } catch (ApiErrorException $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Stripe error',
                 'error' => $e->getMessage(),
             ], 500);
+
         } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
@@ -283,7 +285,6 @@ class SubscriptionController extends Controller
         return response()->json([
             'success' => true,
             'client_secret' => $paymentIntent->client_secret,
-            'payment_intent_id' => $paymentIntent->id,
         ]);
     }
 
@@ -362,19 +363,19 @@ class SubscriptionController extends Controller
                 'success' => true,
                 'message' => 'Subscription activated successfully',
                 'data' => [
-                    'subscription_id' => $subscription->id,
-                    'stripe_subscription_id' => $subscription->stripe_id,
                     'status' => $subscription->stripe_status,
                     'auto_renew' => ! $subscription->cancel_at_period_end,
                     'current_period_end' => $subscription->currentPeriodEnd()?->toDateTimeString(),
                 ],
             ]);
+
         } catch (ApiErrorException $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Stripe error occurred',
                 'error' => $e->getMessage(),
             ], 500);
+
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -418,12 +419,14 @@ class SubscriptionController extends Controller
                 'success' => true,
                 'message' => 'Trial converted to paid subscription',
             ]);
+
         } catch (\Stripe\Exception\CardException $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Payment failed',
                 'error' => $e->getMessage(),
             ], 402);
+
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -486,6 +489,7 @@ class SubscriptionController extends Controller
                     'status' => $subscription->stripe_status,
                 ],
             ]);
+
         } catch (\Laravel\Cashier\Exceptions\IncompletePayment $e) {
             return response()->json([
                 'success' => false,
@@ -493,6 +497,7 @@ class SubscriptionController extends Controller
                 'payment_intent' => $e->payment->id,
                 'client_secret' => $e->payment->client_secret,
             ], 402);
+
         } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
@@ -524,6 +529,7 @@ class SubscriptionController extends Controller
                     'on_grace_period' => $subscription->onGracePeriod()
                 ]
             ]);
+
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -559,6 +565,7 @@ class SubscriptionController extends Controller
                     ];
                 }),
             ]);
+
         } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
