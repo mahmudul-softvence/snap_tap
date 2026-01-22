@@ -9,26 +9,54 @@ use PragmaRX\Google2FA\Google2FA;
 
 class TwoFactorController extends Controller
 {
+
     public function setup(Request $request)
     {
+        $user = $request->user();
+
         $google2fa = new Google2FA();
+
         $secret = $google2fa->generateSecretKey();
 
-        $qr = $google2fa->getQRCodeUrl(
+        $otpauthUrl = $google2fa->getQRCodeUrl(
             config('app.name'),
-            $request->user()->email,
+            $user->email,
             $secret
         );
 
-        $request->user()->update([
+        $user->update([
             'two_factor_secret' => encrypt($secret)
         ]);
 
+        $qrCodeImageUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data='
+            . urlencode($otpauthUrl);
+
         return response()->json([
-            'qr_code' => $qr,
-            'secret'  => $secret
+            'qr_code_url' => $qrCodeImageUrl,
+            'secret'      => $secret
         ]);
     }
+    
+    // public function setup(Request $request)
+    // {
+    //     $google2fa = new Google2FA();
+    //     $secret = $google2fa->generateSecretKey();
+
+    //     $qr = $google2fa->getQRCodeUrl(
+    //         config('app.name'),
+    //         $request->user()->email,
+    //         $secret
+    //     );
+
+    //     $request->user()->update([
+    //         'two_factor_secret' => encrypt($secret)
+    //     ]);
+
+    //     return response()->json([
+    //         'qr_code' => $qr,
+    //         'secret'  => $secret
+    //     ]);
+    // }
 
     // STEP 2: Confirm OTP
     public function confirm(Request $request)
@@ -121,4 +149,3 @@ class TwoFactorController extends Controller
         return response()->json(['message' => '2FA disabled']);
     }
 }
- 
