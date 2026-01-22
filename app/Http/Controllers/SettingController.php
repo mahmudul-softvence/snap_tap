@@ -36,6 +36,7 @@ class SettingController extends Controller
             'facebook_login_redirect_uri' => config('services.facebook.redirect'),
             'facebook_page_redirect_uri'  => config('services.facebook.page_redirect'),
             'google_login_redirect_uri'   => config('services.google.redirect'),
+            'google_business_redirect_uri'   => config('services.google.business_redirect'),
         ];
 
 

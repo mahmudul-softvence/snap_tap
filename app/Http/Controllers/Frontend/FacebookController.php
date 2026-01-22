@@ -46,7 +46,6 @@ class FacebookController extends Controller
             ], 400);
         }
 
-        // Get Access Token
         $tokenResponse = Http::get('https://graph.facebook.com/v17.0/oauth/access_token', [
             'client_id'     => config('services.facebook.page_client_id'),
             'client_secret' => config('services.facebook.page_client_secret'),
@@ -63,87 +62,20 @@ class FacebookController extends Controller
 
         $userAccessToken = $tokenResponse['access_token'];
 
-        // Get Pages
         $pagesResponse = Http::withToken($userAccessToken)
             ->get('https://graph.facebook.com/v17.0/me/accounts')
             ->json();
 
-        // Encode pages safely
         $pagesJson = urlencode(json_encode($pagesResponse['data']));
 
-        // Redirect to frontend with query params
         $query = http_build_query([
             'user_id' => auth()->id(),
             'access_token' => $userAccessToken,
             'pages' => $pagesJson,
         ]);
 
-        return redirect(config('app.frontend_url') . "/dashboard/facebook/callback?$query");
+        return redirect(config('app.frontend_url') . "/facebook/callback?$query");
     }
-
-
-    /**
-     * Optional: API endpoint for Next.js to get session data safely
-     */
-    public function getSessionData(Request $request)
-    {
-        return response()->json([
-            'success' => true,
-            'user_id' => Session::get('facebook_user_id'),
-            'user_access_token' => Session::get('facebook_access_token'),
-            'pages' => Session::get('facebook_pages'),
-        ]);
-    }
-
-
-
-    // public function callback(Request $request)
-    // {
-    //     if (!$request->has('code')) {
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'Authorization code missing',
-    //         ], 400);
-    //     }
-
-    //     $tokenResponse = Http::get(
-    //         'https://graph.facebook.com/v17.0/oauth/access_token',
-    //         [
-    //             'client_id'     => config('services.facebook.page_client_id'),
-    //             'client_secret' => config('services.facebook.page_client_secret'),
-    //             'redirect_uri'  => config('services.facebook.page_redirect'),
-    //             'code'          => $request->code,
-    //         ]
-    //     )->json();
-
-    //     if (!isset($tokenResponse['access_token'])) {
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'Failed to retrieve access token',
-    //             'facebook_response' => $tokenResponse,
-    //         ], 400);
-    //     }
-
-    //     $userAccessToken = $tokenResponse['access_token'];
-
-    //     $pagesResponse = Http::withToken($userAccessToken)
-    //         ->get('https://graph.facebook.com/v17.0/me/accounts')
-    //         ->json();
-
-    //     if (empty($pagesResponse['data'])) {
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'No Facebook pages found',
-    //         ], 403);
-    //     }
-
-    //     return response()->json([
-    //         'success' => true,
-    //         'user_id' => auth()->id(),
-    //         'user_access_token' => $userAccessToken,
-    //         'pages' => $pagesResponse['data'],
-    //     ]);
-    // }
 
     public function connectPage(Request $request)
     {
@@ -159,7 +91,7 @@ class FacebookController extends Controller
                 'provider_account_id' => $request->page_id,
             ],
             [
-                'user_id' => $request->user_id,
+                'user_id' => auth()->id(),
                 'business_name' => $request->page_name,
                 'access_token' => $request->page_token,
                 'token_expires_at' => now()->addDays(60),
