@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Frontend\PaymentMethodController;
 use App\Http\Controllers\Frontend\PlanController;
 use App\Http\Controllers\Frontend\SubscriptionController;
-
+use App\Http\Controllers\GoogleBusinessController;
 
 Route::middleware('guest:sanctum')->group(function () {
 
@@ -120,6 +120,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/gmb/reply', [GmbController::class, 'reply']);
 });
 
+
 /// fake GMB routes for testing (Mock Version)
 // Route::get('/google/gmb/auth-url', [GmbMockVersionController::class, 'authUrl']);
 // Route::get('/google/gmb/callback', [GmbMockVersionController::class, 'callback']);
@@ -158,12 +159,6 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 });
 
-// Route::middleware('auth:sanctum')->group(function () {
-//     Route::get('/gmb/accounts', [GmbMockVersionController::class, 'accounts']);
-//     Route::get('/gmb/locations/{account}', [GmbMockVersionController::class, 'locations'])->where('account', '.*');
-//     Route::get('/gmb/reviews/{location}', [GmbMockVersionController::class, 'reviews'])->where('location', '.*');
-//     Route::post('/gmb/reply', [GmbMockVersionController::class, 'reply']);
-// });
 
 Route::get('/facebook/callback', [FacebookController::class, 'callback']);
 // Facebook

@@ -69,13 +69,8 @@ class AppServiceProvider extends ServiceProvider
         Config::set('services.google.client_id', Setting::get('google_client_id'));
         Config::set('services.google.client_secret', Setting::get('google_client_secret'));
         Config::set('services.google.redirect', Setting::get('google_redirect_uri', url('/api/auth/google/callback')));
-
-        // -----------------------------
-        // GOOGLE GMB
-        // -----------------------------
-        // Config::set('services.google_gmb.client_id', Setting::where('key', 'google_gmb_client_id')->value('value'));
-        // Config::set('services.google_gmb.client_secret', Setting::where('key', 'google_gmb_client_secret')->value('value'));
-        // Config::set('services.google_gmb.redirect', Setting::where('key', 'google_gmb_redirect_uri')->value('value'));
+        // Business connect
+        Config::set('services.google.business_redirect', Setting::get('google_business_redirect', url('/api/google/gmb/callback')));
 
         // -----------------------------
         // TWILIO / SMS

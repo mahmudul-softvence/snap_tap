@@ -4,16 +4,22 @@ namespace App\Http\Controllers\Frontend;
 
 use App\Http\Controllers\Controller;
 use App\Models\UserBusinessAccount;
-use Illuminate\Support\Facades\Http;
+use App\Models\Setting;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 
 class GmbController extends Controller
 {
+    //Google OAuth Authorization URL
     public function authUrl()
     {
+        $clientId    = Setting::get('google_client_id');
+        $redirectUrl = Setting::get('google_business_redirect')
+            ?: url('/api/google/gmb/callback');
+
         $query = http_build_query([
-            'client_id'     => config('services.google_gmb.client_id'),
-            'redirect_uri'  => config('services.google_gmb.redirect'),
+            'client_id'     => $clientId,
+            'redirect_uri'  => $redirectUrl,
             'response_type' => 'code',
             'scope'         => 'https://www.googleapis.com/auth/business.manage',
             'access_type'   => 'offline',
@@ -22,10 +28,11 @@ class GmbController extends Controller
 
         return response()->json([
             'success' => true,
-            'url' => 'https://accounts.google.com/o/oauth2/v2/auth?' . $query,
+            'url'     => 'https://accounts.google.com/o/oauth2/v2/auth?' . $query,
         ]);
     }
 
+    //OAuth Callback
     public function callback(Request $request)
     {
         if (!$request->has('code')) {
@@ -35,12 +42,17 @@ class GmbController extends Controller
             ], 400);
         }
 
+        $clientId     = Setting::get('google_client_id');
+        $clientSecret = Setting::get('google_client_secret');
+        $redirectUrl  = Setting::get('google_business_redirect')
+            ?: url('/api/google/gmb/callback');
+
         $tokenResponse = Http::asForm()->post(
             'https://oauth2.googleapis.com/token',
             [
-                'client_id'     => config('services.google_gmb.client_id'),
-                'client_secret' => config('services.google_gmb.client_secret'),
-                'redirect_uri'  => config('services.google_gmb.redirect'),
+                'client_id'     => $clientId,
+                'client_secret' => $clientSecret,
+                'redirect_uri'  => $redirectUrl,
                 'grant_type'    => 'authorization_code',
                 'code'          => $request->code,
             ]
@@ -62,7 +74,7 @@ class GmbController extends Controller
             ->get('https://mybusinessaccountmanagement.googleapis.com/v1/accounts')
             ->json();
 
-        if (!isset($accountsResponse['accounts']) || empty($accountsResponse['accounts'])) {
+        if (empty($accountsResponse['accounts'])) {
             return response()->json([
                 'success' => false,
                 'message' => 'No Google Business Profile account found OR API access not approved yet',
@@ -78,19 +90,20 @@ class GmbController extends Controller
                 'provider_account_id' => $account['name'],
             ],
             [
-                'user_id' => auth()->id(),
-                'business_name' => $account['accountName'] ?? null,
-                'access_token' => $accessToken,
-                'refresh_token' => $refreshToken,
+                'user_id'          => auth()->id(),
+                'business_name'    => $account['accountName'] ?? null,
+                'access_token'     => $accessToken,
+                'refresh_token'    => $refreshToken,
                 'token_expires_at' => $expiresAt,
-                'meta_data' => $account,
-                'status' => 'connected',
+                'meta_data'        => $account,
+                'status'           => 'connected',
             ]
         );
 
         return redirect(config('app.frontend_url') . '/gmb/success');
     }
 
+    //Get valid Google access token
     private function getToken(): string
     {
         $account = UserBusinessAccount::where('user_id', auth()->id())
@@ -111,8 +124,8 @@ class GmbController extends Controller
             $refreshResponse = Http::asForm()->post(
                 'https://oauth2.googleapis.com/token',
                 [
-                    'client_id'     => config('services.google_gmb.client_id'),
-                    'client_secret' => config('services.google_gmb.client_secret'),
+                    'client_id'     => Setting::get('google_client_id'),
+                    'client_secret' => Setting::get('google_client_secret'),
                     'grant_type'    => 'refresh_token',
                     'refresh_token' => $account->refresh_token,
                 ]
@@ -123,7 +136,7 @@ class GmbController extends Controller
             }
 
             $account->update([
-                'access_token' => $refreshResponse['access_token'],
+                'access_token'     => $refreshResponse['access_token'],
                 'token_expires_at' => now()->addSeconds($refreshResponse['expires_in'] ?? 3600),
             ]);
 
@@ -133,6 +146,7 @@ class GmbController extends Controller
         return $account->access_token;
     }
 
+    //List Google Business Accounts
     public function accounts()
     {
         return Http::withToken($this->getToken())
@@ -140,6 +154,7 @@ class GmbController extends Controller
             ->json();
     }
 
+    //List Locations under an Account
     public function locations($account)
     {
         return Http::withToken($this->getToken())
@@ -147,6 +162,7 @@ class GmbController extends Controller
             ->json();
     }
 
+    //List Reviews of a Location
     public function reviews($location)
     {
         return Http::withToken($this->getToken())
@@ -154,6 +170,7 @@ class GmbController extends Controller
             ->json();
     }
 
+    //Reply to a Review
     public function reply(Request $request)
     {
         $request->validate([
