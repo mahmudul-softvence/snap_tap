@@ -368,23 +368,6 @@ class AdminSubscriptionController extends Controller
         }
     }
 
-    private function resolveStatus($subscription): string
-    {
-        if ($subscription->stripe_status === 'active') {
-            return 'Active';
-        }
-        if ($subscription->trial_ends_at && $subscription->trial_ends_at->isFuture()) {
-            return 'Trial';
-        }
-        if ($subscription->ends_at && $subscription->ends_at->isPast()) {
-            return 'Expired';
-        }
-        if ($subscription->cancel_at_period_end) {
-            return 'Cancelled';
-        }
-        return 'Unknown';
-    }
-
     /**
      * Calculate percentage change month-over-month
      */
@@ -422,6 +405,24 @@ class AdminSubscriptionController extends Controller
                 )
             );
     }
+
+    private function resolveStatus($subscription): string
+    {
+        if ($subscription->stripe_status === 'active') {
+            return 'Active';
+        }
+        if ($subscription->trial_ends_at && $subscription->trial_ends_at->isFuture()) {
+            return 'Trial';
+        }
+        if ($subscription->ends_at && $subscription->ends_at->isPast()) {
+            return 'Expired';
+        }
+        if ($subscription->cancel_at_period_end) {
+            return 'Cancelled';
+        }
+        return 'Unknown';
+    }
+
 
     public function changeSubscription(Request $request): JsonResponse
     {
