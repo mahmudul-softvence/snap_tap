@@ -29,7 +29,6 @@ Route::middleware('guest:sanctum')->group(function () {
         Route::post('reset-password', 'resetPassword');
     });
 
-
     Route::controller(SocialiteController::class)->group(function () {
         Route::get('/auth/{provider}/redirect', 'redirect');
         Route::get('/auth/{provider}/callback', 'callback');
@@ -78,6 +77,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // User Profile
     Route::controller(UserProfileController::class)->group(function () {
+        Route::get('auth/me', 'authMe');
         Route::get('user-profile/show', 'showProfile');
         Route::put('user-profile/update', 'update');
         Route::get('user-profile/integration', 'integration');
@@ -135,7 +135,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
 // For Subscription & plan.
 Route::middleware('auth:sanctum')->group(function () {
-    
+
     // Payment Methods
     Route::prefix('payment-methods')->group(function () {
         Route::get('/', [PaymentMethodController::class, 'index']);

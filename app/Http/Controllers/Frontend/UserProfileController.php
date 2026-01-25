@@ -15,6 +15,28 @@ use App\Services\ImageUpload;
 
 class UserProfileController extends Controller
 {
+    public function authMe()
+    {
+        $user = User::with('businessProfile', 'businessAccounts')->find(Auth::id());
+
+        $subscription = auth()->user()->subscription('default');
+
+        abort_if($user->id !== Auth::id(), 403, 'Unauthorized');
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User not found'
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $user,
+            'subscription' => $subscription,
+        ]);
+    }
+
     public function showProfile()
     {
         $user = User::with('businessProfile')->find(Auth::id());
