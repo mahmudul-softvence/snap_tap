@@ -193,7 +193,7 @@ class UserProfileManageController extends Controller
         ], 200);
     }
 
-
+    //user provider account remove by admin
     public function removeUserProviderAccount(Request $request, $userId)
     {
         $authUser = Auth::user();
