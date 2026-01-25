@@ -152,6 +152,8 @@ class SubscriptionController extends Controller
         try {
             $user = $request->user();
             $plan = Plan::findOrFail($request->plan_id);
+            $setup_intent_id = $request->setup_intent_id;
+            $autoRenew = $request->auto_renew;
 
             if ($user->subscribed('default')) {
                 return response()->json([
@@ -160,25 +162,6 @@ class SubscriptionController extends Controller
                 ], 400);
             }
 
-            return $this->startTrial(
-                $user,
-                $plan,
-                $request->setup_intent_id,
-                $request->auto_renew
-            );
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to process purchase',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
-    }
-
-    private function startTrial($user, Plan $plan, string $setup_intent_id, bool $autoRenew): JsonResponse
-    {
-        try {
             Stripe::setApiKey(config('cashier.secret'));
             $setupIntent = SetupIntent::retrieve($setup_intent_id);
 
@@ -246,6 +229,13 @@ class SubscriptionController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to start trial',
+                'error' => $e->getMessage(),
+            ], 500);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to process purchase',
                 'error' => $e->getMessage(),
             ], 500);
         }
