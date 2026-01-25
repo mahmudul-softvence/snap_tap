@@ -68,7 +68,7 @@ class ReviewController extends Controller
         // }
 
         // $reviews = $query->get();
-        $reviews = $query->paginate($limit);
+        $reviews = $query->paginate($limit); 
 
         $formatted = $reviews->map(function ($review) {
 
@@ -196,7 +196,7 @@ class ReviewController extends Controller
                 'success'    => true,
                 'reply_id'   => $newReplyId,
                 'reply_text' => $comment,
-                'mode'       => 'replaced', 
+                'mode'       => 'replaced',
             ]);
         }
 
