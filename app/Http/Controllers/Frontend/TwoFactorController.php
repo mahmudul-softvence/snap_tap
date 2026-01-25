@@ -60,8 +60,8 @@ class TwoFactorController extends Controller
         );
 
 
-        $qrCode = QrCode::format('png')->size(250)->generate($otpauthUrl);
-        $qrCodeDataUri = 'data:image/png;base64,' . base64_encode($qrCode);
+        $qrCode = QrCode::format('svg')->size(250)->generate($otpauthUrl);
+        $qrCodeDataUri = 'data:image/svg+xml;base64,' . base64_encode($qrCode);
 
 
         return response()->json([
