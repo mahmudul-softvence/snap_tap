@@ -55,7 +55,7 @@ class SyncPageReviewsJob implements ShouldQueue
 
                     $reviewerAvatar = $avatarService->saveAvatar(
                         $item['reviewer']['picture']['data']['url'] ?? null,
-                        $oldAvatar ? str_replace(url('/').'/', '', $oldAvatar) : null
+                        $oldAvatar ? str_replace(url('/') . '/', '', $oldAvatar) : null
                     ) ?? "https://ui-avatars.com/api/?name=" . urlencode($reviewerName) . "&background=0d6efd&color=fff";
 
                     $rating = $item['rating'] ?? (($item['recommendation_type'] ?? 'positive') === 'negative' ? 1 : 5);

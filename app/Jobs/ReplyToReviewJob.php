@@ -31,7 +31,6 @@ class ReplyToReviewJob implements ShouldQueue
             ->where('is_active', true)
             ->where('review_type', '>=', $this->review->rating)
             ->where('method', $this->review->provider)
-            ->where('is_active', 1)
             ->first();
 
         if (!$aiAgent) {
@@ -58,7 +57,7 @@ class ReplyToReviewJob implements ShouldQueue
         ]);
     }
 
-    protected function generateReply(string $reviewText, string $aiAgentContent): string
+    protected function generateReply(string $reviewText, string $aiAgentContent = ''): string
     {
         $response = OpenAI::chat()->create([
             'model' => 'gpt-5.2',
