@@ -22,6 +22,8 @@ class ForgotPasswordController extends Controller
      */
     public function forgotPassword(Request $request): JsonResponse
     {
+        $expiryMinutes = 5;
+
         try {
 
             $validator = Validator::make($request->all(), [
@@ -43,19 +45,16 @@ class ForgotPasswordController extends Controller
                 return response()->json(['status' => false, 'error' => 'Email not found'], 404);
             }
 
-            // Generate a 6-digit numeric OTP
             $otp = rand(100000, 999999);
 
-            // Create new OTP with expiry
             PasswordResetOtp::create([
                 'email' => $email,
                 'otp' => $otp,
-                'expires_at' => Carbon::now()->addMinutes(10)
+                'expires_at' => Carbon::now()->addMinutes($expiryMinutes)
             ]);
 
-            //Send email with OTP
             Mail::to($email)->queue(
-                (new OtpPasswordResetMail($user->name, $otp, 10))->delay(now()->addSeconds(5))
+                (new OtpPasswordResetMail($user->name, $otp, $expiryMinutes))->delay(now()->addSeconds(5))
             );
 
             return response()->json([
@@ -63,7 +62,7 @@ class ForgotPasswordController extends Controller
                 'message' => 'OTP sent to your email address. Check your inbox.',
                 'data' => [
                     'email' => $email,
-                    'expires_in_minutes' => 10
+                    'expires_in_minutes' => $expiryMinutes
                 ]
             ], 200);
         } catch (\Exception $e) {
@@ -149,7 +148,7 @@ class ForgotPasswordController extends Controller
             PasswordResetOtp::where('email', $email)->delete();
 
             $otp = rand(100000, 999999);
-            $expiryMinutes = 10;
+            $expiryMinutes = 5;
 
             PasswordResetOtp::create([
                 'email' => $email,
@@ -158,7 +157,7 @@ class ForgotPasswordController extends Controller
             ]);
 
             Mail::to($email)->queue(
-                (new OtpPasswordResetMail($user->name, $otp, 10))->delay(now()->addSeconds(5))
+                (new OtpPasswordResetMail($user->name, $otp, $expiryMinutes))->delay(now()->addSeconds(5))
             );
 
             return response()->json([
@@ -179,6 +178,9 @@ class ForgotPasswordController extends Controller
     }
 
 
+    /**
+     * Reset Password
+     */
     public function resetPassword(Request $request): JsonResponse
     {
         try {
