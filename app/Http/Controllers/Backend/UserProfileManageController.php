@@ -9,6 +9,7 @@ use App\Services\ImageUpload;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use App\Models\BusinessProfile;
+use App\Models\GetReview;
 use App\Models\UserBusinessAccount;
 use Illuminate\Http\Request;
 
@@ -21,7 +22,7 @@ class UserProfileManageController extends Controller
 
         $user = User::with('businessProfile')->find($id);
 
-        if (!$user) { 
+        if (!$user) {
             return response()->json([
                 'success' => false,
                 'message' => 'User not found'
@@ -189,6 +190,44 @@ class UserProfileManageController extends Controller
             'success'          => true,
             'message'          => 'Integration status updated successfully',
             'business_account' => $businessAccount
+        ], 200);
+    }
+
+
+    public function removeUserProviderAccount(Request $request, $userId)
+    {
+        $authUser = Auth::user();
+        abort_if(!$authUser || !$authUser->hasRole('super_admin'), 403, 'Unauthorized');
+
+        $provider = $request->input('provider'); // 'facebook' or 'google'
+        abort_if(!$provider || !in_array($provider, ['facebook', 'google']), 400, 'Invalid provider');
+
+        $user = User::find($userId);
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User not found'
+            ], 404);
+        }
+
+        $businessAccount = UserBusinessAccount::where('user_id', $userId)
+            ->where('provider', $provider)
+            ->first();
+
+        if (!$businessAccount) {
+            return response()->json([
+                'success' => false,
+                'message' => "No $provider account found for this user"
+            ], 404);
+        }
+
+        $businessAccount->reviews()->delete();
+
+        $businessAccount->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => ucfirst($provider) . ' account and its reviews deleted successfully'
         ], 200);
     }
 }

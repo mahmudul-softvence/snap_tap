@@ -22,4 +22,9 @@ class UserBusinessAccount extends Model
         'meta_data' => 'array',
         'token_expires_at' => 'datetime',
     ];
+
+    public function reviews()
+    {
+        return $this->hasMany(GetReview::class, 'page_id', 'provider_account_id');
+    }
 }
