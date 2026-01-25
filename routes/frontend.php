@@ -23,8 +23,9 @@ use App\Http\Controllers\GoogleBusinessController;
 Route::middleware('guest:sanctum')->group(function () {
 
     Route::controller(ForgotPasswordController::class)->group(function () {
-        Route::post('forgot-password', 'forgotPassword');
+        Route::post('forgot-password', 'forgotPassword')->middleware('throttle:forgot-password');
         Route::post('verify-otp', 'verifyOtp');
+        Route::post('resend-otp', 'resendOtp')->middleware('throttle:resend-otp');
         Route::post('reset-password', 'resetPassword');
     });
 

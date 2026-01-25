@@ -9,6 +9,9 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Config;
 use App\Models\Setting;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -19,6 +22,19 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+
+        RateLimiter::for('resend-otp', function (Request $request) {
+            return Limit::perMinutes(10, 3)->by(
+                $request->email ?: $request->ip()
+            );
+        });
+
+        RateLimiter::for('forgot-password', function (Request $request) {
+            return Limit::perMinutes(10, 3)->by(
+                $request->email ?: $request->ip()
+            );
+        });
+
         if (!Schema::hasTable('settings')) {
             return;
         }
@@ -82,6 +98,5 @@ class AppServiceProvider extends ServiceProvider
         //CUSTOM MODELS
         Cashier::useSubscriptionModel(Subscription::class);
         Cashier::useSubscriptionItemModel(SubscriptionItem::class);
-
     }
 }

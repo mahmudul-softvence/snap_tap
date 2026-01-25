@@ -64,7 +64,7 @@ class ReviewController extends Controller
         }
 
         if ($limit > 0) {
-            $query->limit($limit);
+            $query->paginate($limit);
         }
 
         $reviews = $query->get();
