@@ -9,6 +9,7 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 
@@ -51,9 +52,10 @@ class ForgotPasswordController extends Controller
                 'otp' => $otp,
                 'expires_at' => Carbon::now()->addMinutes(10)
             ]);
+
             //Send email with OTP
-            Mail::to($email)->send(
-                new OtpPasswordResetMail($user->name, $otp, 10)
+            Mail::to($email)->queue(
+                (new OtpPasswordResetMail($user->name, $otp, 10))->delay(now()->addSeconds(5))
             );
 
             return response()->json([
@@ -116,6 +118,67 @@ class ForgotPasswordController extends Controller
         }
     }
 
+    /**
+     * Resend OTP
+     */
+    public function resendOtp(Request $request): JsonResponse
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'email' => 'required|email',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Validation Error',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $email = $request->email;
+
+            $user = User::where('email', $email)->first();
+            if (!$user) {
+                return response()->json([
+                    'status' => false,
+                    'error' => 'Email not found'
+                ], 404);
+            }
+
+            PasswordResetOtp::where('email', $email)->delete();
+
+            $otp = rand(100000, 999999);
+            $expiryMinutes = 10;
+
+            PasswordResetOtp::create([
+                'email' => $email,
+                'otp' => $otp,
+                'expires_at' => Carbon::now()->addMinutes($expiryMinutes)
+            ]);
+
+            Mail::to($email)->queue(
+                (new OtpPasswordResetMail($user->name, $otp, 10))->delay(now()->addSeconds(5))
+            );
+
+            return response()->json([
+                'success' => true,
+                'message' => 'OTP resent successfully. Please check your email.',
+                'data' => [
+                    'email' => $email,
+                    'expires_in_minutes' => $expiryMinutes
+                ]
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to resend OTP. Please try again.',
+                'error' => config('app.debug') ? $e->getMessage() : null
+            ], 500);
+        }
+    }
+
+
     public function resetPassword(Request $request): JsonResponse
     {
         try {
@@ -143,12 +206,10 @@ class ForgotPasswordController extends Controller
                 ], 400);
             }
 
-            // Update User Password
             User::where('email', $request->email)->update([
                 'password' => bcrypt($request->password)
             ]);
 
-            // Delete OTP record
             PasswordResetOtp::where('email', $request->email)
                 ->delete();
 

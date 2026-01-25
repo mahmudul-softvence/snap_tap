@@ -15,6 +15,211 @@ use Illuminate\Pagination\LengthAwarePaginator;
 
 class AdminSubscriptionController extends Controller
 {
+    public function adminDashboard(Request $request): JsonResponse
+    {
+        try {
+            $now = Carbon::now();
+            $total_user = User::count();
+
+            [$thisMonthStart, $thisMonthEnd] = $this->monthRange($now);
+            [$lastMonthStart, $lastMonthEnd] = $this->monthRange($now->copy()->subMonth());
+
+            $subscriptionQuery = Subscription::query()
+                ->with([
+                    'user:id,name',
+                    'items.plan',
+                ]);
+
+            if ($request->filled('plan_id')) {
+                    $subscriptionQuery->whereHas('items', function ($q) use ($request) {
+                        $q->whereHas('plan', function ($q2) use ($request) {
+                            $q2->where('id', $request->plan_id);
+                        });
+                    });
+                }
+
+            if ($request->filled('status')) {
+                match ($request->status) {
+                    'active' => $subscriptionQuery->where('stripe_status', 'active'),
+
+                    'trial' => $subscriptionQuery
+                        ->whereNotNull('trial_ends_at')
+                        ->where('trial_ends_at', '>', now()),
+
+                    'canceled' => $subscriptionQuery->whereNotNull('ends_at'),
+
+                    'expired' => $subscriptionQuery
+                        ->whereNotNull('ends_at')
+                        ->where('ends_at', '<', now()),
+
+                    default => null,
+                };
+            }
+
+            if ($request->filled('search')) {
+                $search = $request->search;
+
+                $subscriptionQuery->where(function ($query) use ($search) {
+                    $query->where('id', 'like', "%{$search}%")
+                        ->orWhereHas('user', function ($q) use ($search) {
+                            $q->where('name', 'like', "%{$search}%");
+                        })
+                        ->orWhereHas('items.plan', function ($q) use ($search) {
+                            $q->where('name', 'like', "%{$search}%");
+                        });
+                });
+            }
+  
+            $subscriptionQuery->orderBy(
+                'created_at',
+                $request->get('sort', 'desc')
+            );
+
+            $total_subscriptions = $subscriptionQuery
+                ->paginate($request->get('per_page', 10))
+                ->through(function ($subscription) {
+
+                    $plan = $subscription->items->first()?->plan;
+                    $renewOn = $subscription->renewOn();
+
+                    return [
+                        'subscription_id' => $subscription->id,
+                        'customer_name' => $subscription->user->name,
+                        'plan' => $plan?->name,
+                        'amount' => $plan?->price,
+                        'renewal' => ! $subscription->cancel_at_period_end,
+                        'start_date' => $subscription->created_at->toDateTimeString(),
+                        'next_billing' => $renewOn?->format('Y-m-d'),
+                        'status' => $this->resolveStatus($subscription),
+                    ];
+                });
+
+            $active_subscription = Subscription::where('stripe_status', 'active')->count();
+            
+            $thisMonthRevenue = $this->revenueForRange($thisMonthStart, $thisMonthEnd);
+            $lastMonthRevenue = $this->revenueForRange($lastMonthStart, $lastMonthEnd);
+
+            $thisMonthActive = Subscription::where('stripe_status', 'active')
+                ->whereDate('created_at', '<=', $thisMonthEnd)
+                ->count();
+
+            $lastMonthActive = Subscription::where('stripe_status', 'active')
+                ->whereDate('created_at', '<=', $lastMonthEnd)
+                ->count();
+
+            $thisMonthConvert = Subscription::where('trial_converted', '1')
+                ->whereDate('created_at', '<=', $thisMonthEnd)
+                ->count();
+
+            $lastMonthconvert = Subscription::where('trial_converted', '1')
+                ->whereDate('created_at', '<=', $lastMonthEnd)
+                ->count();
+
+            $thisMonthUser = User::whereDate('created_at', '<=', $thisMonthEnd)
+                ->count();
+
+            $lastMonthUser = User::whereDate('created_at', '<=', $lastMonthEnd)
+                ->count();
+
+            $chartData = $this->monthlyAnalytics(
+                Carbon::now()->subMonths(6)->startOfMonth(),
+                Carbon::now()->endOfMonth()
+            );
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Admin dashboard loaded successfully',
+                'data' => [
+                    'metrics' => [
+                        'totalUser' => [
+                            'total_user' => $total_user,
+                            'change_percent' => $this->percentChange($thisMonthUser, $lastMonthUser),
+                        ],
+                        'activesubscription' => [
+                            'active_subscription' => $active_subscription,
+                            'change_percent' => $this->percentChange($thisMonthActive, $lastMonthActive),
+                        ],
+                        'monthlyRevenue' => [
+                            'monthly_revenue' => $thisMonthRevenue,
+                            'change_percent' => $this->percentChange($thisMonthRevenue, $lastMonthRevenue),
+                        ],
+                        'totalConvertion' => [
+                            'total_convertion' => $thisMonthConvert,
+                            'change_percent' => $this->percentChange($thisMonthConvert, $lastMonthconvert),
+                        ],
+                        'chartData' => $chartData,
+                    ],
+                    'customerSubscription' => $total_subscriptions,
+                ],
+            ], 200);
+
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load admin dashboard',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    private function monthlyAnalytics(Carbon $start, Carbon $end): array
+    {
+        $data = [];
+        $cursor = $start->copy()->startOfMonth();
+
+        while ($cursor <= $end) {
+
+            $monthStart = $cursor->copy()->startOfMonth();
+            $monthEnd   = $cursor->copy()->endOfMonth();
+
+            $revenue = $this->revenueForRange($monthStart, $monthEnd);
+
+            $startActive = Subscription::where('created_at', '<', $monthStart)
+                ->where(function ($q) use ($monthStart) {
+                    $q->whereNull('ends_at')
+                    ->orWhere('ends_at', '>=', $monthStart);
+                })
+                ->count();
+
+            $endActive = Subscription::where('created_at', '<=', $monthEnd)
+                ->where(function ($q) use ($monthEnd) {
+                    $q->whereNull('ends_at')
+                    ->orWhere('ends_at', '>', $monthEnd);
+                })
+                ->count();
+
+            $canceled = Subscription::whereBetween('ends_at', [$monthStart, $monthEnd])
+                ->count();
+
+            $trial = Subscription::whereBetween('created_at', [$monthStart, $monthEnd])
+                ->whereNotNull('trial_ends_at')
+                ->where('trial_ends_at', '>', $monthEnd)
+                ->count();
+
+            if ($startActive === 0) {
+                $retention = 0;
+                $churn = 0;
+            } else {
+                $retention = round(($endActive / $startActive) * 100, 2);
+                $churn = round(($canceled / $startActive) * 100, 2);
+            }
+
+            $data[] = [
+                'month'     => $cursor->format('M'),
+                'revenue'   => $revenue,
+                'retention' => $retention,
+                'churn'     => $churn,
+                'active_subscription'    => $endActive,
+                'trial_subscription'     => $trial,
+                'cancel_subscription'    => $canceled,
+            ];
+
+            $cursor->addMonth();
+        }
+
+        return $data;
+    }
+
     public function adminSubscriptionDashboard(Request $request): JsonResponse
     {
         try {
@@ -95,22 +300,7 @@ class AdminSubscriptionController extends Controller
                     ];
                 });
 
-            $monthlyRevenue = Subscription::activeLike()
-                ->whereMonth('created_at', Carbon::now()->month)
-                ->whereYear('created_at', Carbon::now()->year)
-                ->with('items.plan')
-                ->get()
-                ->sum(function ($subscription) {
-                       return $subscription->items->sum(function ($item) {
-                         return ($item->quantity ?? 1) * ($item->plan->price ?? 0);
-                    });
-                });
-
             $totalActive = Subscription::where('stripe_status', 'active')->count();
-
-            $renewals = Subscription::whereMonth('updated_at', now()->month)
-                ->where('stripe_status', 'active')
-                ->count();
 
             $cancellations = Subscription::whereNotNull('ends_at')
                 ->whereMonth('ends_at', now()->month)
@@ -119,7 +309,6 @@ class AdminSubscriptionController extends Controller
             $thisMonthRevenue = $this->revenueForRange($thisMonthStart, $thisMonthEnd);
             $lastMonthRevenue = $this->revenueForRange($lastMonthStart, $lastMonthEnd);
 
-            
             $thisMonthActive = Subscription::where('stripe_status', 'active')
                 ->whereDate('created_at', '<=', $thisMonthEnd)
                 ->count();
@@ -148,29 +337,25 @@ class AdminSubscriptionController extends Controller
                 'success' => true,
                 'message' => 'Admin subscription dashboard loaded successfully',
                 'data' => [
-                    'subscriptions' => $subscriptions,
-                    'monthlyRevenue' => $monthlyRevenue,
-                    'totalActive' => $totalActive,
-                    'renewals' => $renewals,
-                    'cancellations' => $cancellations,
                     'metrics' => [
                         'monthlyRevenue' => [
-                            'value' => $thisMonthRevenue,
+                            'monthly_revenue' => $thisMonthRevenue,
                             'change_percent' => $this->percentChange($thisMonthRevenue, $lastMonthRevenue),
                         ],
                         'totalActive' => [
-                            'value' => $thisMonthActive,
+                            'total_active' => $totalActive,
                             'change_percent' => $this->percentChange($thisMonthActive, $lastMonthActive),
                         ],
-                        'renewals' => [
-                            'value' => $thisMonthRenewals,
+                        'RenewalsThisMonth' => [
+                            'Renewals_this_month' => $thisMonthRenewals,
                             'change_percent' => $this->percentChange($thisMonthRenewals, $lastMonthRenewals),
                         ],
                         'cancellations' => [
-                            'value' => $thisMonthCancellations,
+                            'cancellations' => $cancellations,
                             'change_percent' => $this->percentChange($thisMonthCancellations, $lastMonthCancellations),
                         ],
                     ],
+                    'subscriptions' => $subscriptions,
                 ],
             ], 200);
 

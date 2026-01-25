@@ -21,18 +21,38 @@ class AiAgentController extends Controller
     /**
      * List AI Agents
      */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $data = AiAgent::where('user_id', Auth::id())
-            ->latest()
-            ->get();
+        $perPage = $request->input('per_page', 10);
+
+        $query = AiAgent::where('user_id', Auth::id());
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('method', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('method')) {
+            $query->where('method', $request->method);
+        }
+
+        if ($request->input('sort') === 'oldest') {
+            $query->orderBy('created_at', 'asc');
+        } else {
+            $query->orderBy('created_at', 'desc');
+        }
+
+        $agents = $query->paginate($perPage);
 
         return response()->json([
-            'success'  => true,
-            'data' => $data
+            'success' => true,
+            'data' => $agents
         ]);
     }
-
     /**
      * Create AI Agent
      */
