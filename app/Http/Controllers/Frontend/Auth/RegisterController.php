@@ -46,15 +46,13 @@ class RegisterController extends Controller
 
         $user->basicSetting()->create();
 
-        $notifyEnabled = Setting::where('key', 'new_customer_signup_n')
-                        ->where('value', true)
-                        ->exists();
+        $notifyEnabled = Setting::where('key', 'new_customer_singup_n')
+            ->where('value', '1')
+            ->exists();
 
         if ($notifyEnabled) {
-            $superAdmin = User::role('super_admin')->first(); // single super admin
-            if ($superAdmin) {
-                $superAdmin->notify(new \App\Notifications\NewUserRegisteredNotification($user));
-            }
+            $superAdmin = User::role('super_admin')->first();
+            $superAdmin->notify(new \App\Notifications\NewUserRegisteredNotification($user));
         }
 
         $token = $user->createToken('MyApp')->plainTextToken;
