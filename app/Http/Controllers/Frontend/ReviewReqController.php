@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Frontend;
 use App\Http\Controllers\Controller;
 use App\Jobs\SendReviewMessageJob;
 use App\Models\Review;
+use App\Models\Subscription;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -53,18 +54,31 @@ class ReviewReqController extends Controller
      */
     public function create(Request $request): JsonResponse
     {
+        // $user = $request->user();
+        // $subscription = $user->subscription('default');
 
-        if (false) { //$request->user->onFreeTrial()
+        // if (!$subscription) {
+        //     return response()->json([
+        //         'success' => false,
+        //         'message' => 'You need to add a subscription plan to send review requests.'
+        //     ], 403);
+        // }
 
-            $reviewCount = auth()->user()->reviews()->count();
+        // if (
+        //     $subscription &&
+        //     Subscription::where('user_id', Auth::id())
+        //     ->where('stripe_status', 'trialing')
+        //     ->exists()
+        // ) {
+        //     $reviewCount = auth()->user()->reviews()->count();
 
-            if ($reviewCount >= 5) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Free trial users can only send up to 5 review requests.'
-                ], 403);
-            }
-        }
+        //     if ($reviewCount >= 5) {
+        //         return response()->json([
+        //             'success' => false,
+        //             'message' => 'Free trial users can only send up to 5 review requests.'
+        //         ], 403);
+        //     }
+        // }
 
         $validated = $request->validate([
             'name'        => 'required|string|max:255',
@@ -101,8 +115,6 @@ class ReviewReqController extends Controller
             $nextMessageDelay,
             $maxRetries
         )->delay(now()->addHour($firstMessageDelay));
-
-
 
         return response()->json([
             'success' => true,

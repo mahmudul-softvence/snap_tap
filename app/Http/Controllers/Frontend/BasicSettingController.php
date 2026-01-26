@@ -29,6 +29,7 @@ class BasicSettingController extends Controller
 
         $validated = $request->validate([
             'msg_after_checkin'     => 'nullable|integer|min:0',
+            'message_checkin_status' => 'nullable|boolean',
             'next_message_time'     => 'nullable|integer|min:0',
             're_try_time'           => 'nullable|integer|min:0',
 

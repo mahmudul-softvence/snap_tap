@@ -9,6 +9,7 @@ class BasicSetting extends Model
 
     protected $fillable = [
         'msg_after_checkin',
+        'message_checkin_status',
         'next_message_time',
         're_try_time',
 

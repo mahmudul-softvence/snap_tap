@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('basic_settings', function (Blueprint $table) {
             $table->id();
             $table->integer('msg_after_checkin')->nullable()->default(1);
+            $table->boolean('message_checkin_status')->nullable()->default(false);
             $table->integer('next_message_time')->nullable()->default(5);
             $table->integer('re_try_time')->nullable()->default(5);
 
