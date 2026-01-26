@@ -26,8 +26,8 @@ class NewReviewNotification extends Notification implements ShouldQueue
             'title' => 'New Review Received',
             'message' => "{$this->review->reviewer_name} left a {$this->review->rating}★ review",
             'provider' => $this->review->provider,
-            'review_id' => $this->review->id,
             'page_id' => $this->review->page_id,
+            'review_id' => $this->review->provider_review_id,
             'reviewed_at' => $this->review->reviewed_at,
         ];
     }
