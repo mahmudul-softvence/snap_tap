@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Frontend\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\BasicSetting;
+use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -44,6 +45,15 @@ class RegisterController extends Controller
         $user->assignRole('user');
 
         $user->basicSetting()->create();
+
+        $notifyEnabled = Setting::where('key', 'new_customer_singup_n')
+            ->where('value', '1')
+            ->exists();
+
+        if ($notifyEnabled) {
+            $superAdmin = User::role('super_admin')->first();
+            $superAdmin->notify(new \App\Notifications\NewUserRegisteredNotification($user));
+        }
 
         $token = $user->createToken('MyApp')->plainTextToken;
 
