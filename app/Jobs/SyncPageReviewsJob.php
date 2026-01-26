@@ -12,6 +12,9 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Http;
 use App\Jobs\ReplyToReviewJob;
 use App\Services\FacebookAvatarService;
+use App\Notifications\NewReviewNotification;
+use App\Models\User;
+use App\Models\BasicSetting;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 
@@ -235,8 +238,28 @@ class SyncPageReviewsJob implements ShouldQueue
                         ]
                     );
 
-                    if ($review->wasRecentlyCreated && $status === 'pending') {
-                        ReplyToReviewJob::dispatch($review)->delay(now()->addMinutes(1));
+                    // if ($review->wasRecentlyCreated && $status === 'pending') {
+                    //     ReplyToReviewJob::dispatch($review)->delay(now()->addMinutes(1));
+                    // }
+
+                    if ($review->wasRecentlyCreated) {
+
+                        $userId = $this->account->user_id;
+
+                        $notifyEnabled = BasicSetting::where('user_id', $userId)
+                            ->where('new_customer_review', 1)
+                            ->exists();
+
+                        if ($notifyEnabled) {
+                            $user = User::find($userId);
+                            if ($user) {
+                                $user->notify(new NewReviewNotification($review));
+                            }
+                        }
+
+                        if ($status === 'pending') {
+                            ReplyToReviewJob::dispatch($review)->delay(now()->addMinutes(1));
+                        }
                     }
                 }
 
@@ -301,8 +324,28 @@ class SyncPageReviewsJob implements ShouldQueue
                         ]
                     );
 
-                    if ($review->wasRecentlyCreated && $status === 'pending') {
-                        ReplyToReviewJob::dispatch($review)->delay(now()->addMinutes(1));
+                    // if ($review->wasRecentlyCreated && $status === 'pending') {
+                    //     ReplyToReviewJob::dispatch($review)->delay(now()->addMinutes(1));
+                    // }
+
+                    if ($review->wasRecentlyCreated) {
+
+                        $userId = $account->user_id;
+
+                        $notifyEnabled = BasicSetting::where('user_id', $userId)
+                            ->where('new_customer_review', 1)
+                            ->exists();
+
+                        if ($notifyEnabled) {
+                            $user = User::find($userId);
+                            if ($user) {
+                                $user->notify(new NewReviewNotification($review));
+                            }
+                        }
+
+                        if ($status === 'pending') {
+                            ReplyToReviewJob::dispatch($review)->delay(now()->addMinutes(1));
+                        }
                     }
                 }
 

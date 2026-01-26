@@ -9,6 +9,7 @@ use App\Http\Controllers\Frontend\GmbController;
 use App\Http\Controllers\Frontend\BasicSettingController;
 use App\Http\Controllers\Frontend\DashboardController;
 use App\Http\Controllers\Frontend\MessageTemplateController;
+use App\Http\Controllers\Frontend\NotificationController;
 use App\Http\Controllers\Frontend\QrController;
 use App\Http\Controllers\Frontend\ReviewReqController;
 use App\Http\Controllers\Frontend\UserProfileController;
@@ -188,6 +189,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/2fa/setup', [TwoFactorController::class, 'setup']);
     Route::post('/2fa/confirm', [TwoFactorController::class, 'confirm']);
     Route::post('/2fa/disable', [TwoFactorController::class, 'disable']);
+});
+
+Route::middleware('auth:sanctum')->group(function () {
+
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
+    Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
+
 });
 
 
