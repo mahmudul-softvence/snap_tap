@@ -22,7 +22,7 @@ return new class extends Migration
             $table->text('comment')->nullable();
             $table->timestamps();
 
-            $table->index(['provider', 'page_id']); 
+            $table->index(['provider', 'page_id']);
         });
     }
 

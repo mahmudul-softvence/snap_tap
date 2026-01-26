@@ -70,6 +70,7 @@ class ReviewReqController extends Controller
             'name'        => 'required|string|max:255',
             'email'       => 'nullable|email|max:255',
             'phone'       => 'required|string|max:20',
+            'provider'    => 'required|in:google,facebook',
             'status'      => ['required', Rule::in(['sent', 'reviewed', 'reminded'])],
             'message'     => 'required|string',
             'sent_sms'    => 'required|boolean',

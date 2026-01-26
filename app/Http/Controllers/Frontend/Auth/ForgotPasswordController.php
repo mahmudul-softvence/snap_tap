@@ -22,7 +22,7 @@ class ForgotPasswordController extends Controller
      */
     public function forgotPassword(Request $request): JsonResponse
     {
-        $expiryMinutes = 5;
+
 
         try {
 
@@ -46,6 +46,7 @@ class ForgotPasswordController extends Controller
             }
 
             $otp = rand(100000, 999999);
+            $expiryMinutes = 5;
 
             PasswordResetOtp::create([
                 'email' => $email,

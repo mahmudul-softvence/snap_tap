@@ -18,6 +18,7 @@ return new class extends Migration
             $table->string('phone');
             $table->string('status')->default('sent');
             $table->longText('message');
+            $table->string('provider');
             $table->boolean('sent_sms');
             $table->boolean('sent_email');
             $table->integer('retries')->default(0);

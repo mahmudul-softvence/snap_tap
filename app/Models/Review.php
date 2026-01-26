@@ -16,6 +16,7 @@ class Review extends Model
         'sent_sms',
         'sent_email',
         'retries',
+        'provider',
         'user_id',
         'unique_id'
     ];
