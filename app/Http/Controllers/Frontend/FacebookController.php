@@ -36,7 +36,7 @@ class FacebookController extends Controller
             'url' => "https://www.facebook.com/v17.0/dialog/oauth?$query",
         ]);
     }
-
+    //new
     public function callback(Request $request)
     {
         if (!$request->has('code')) {
@@ -46,6 +46,7 @@ class FacebookController extends Controller
             ], 400);
         }
 
+        //Exchange code for short-lived user token
         $tokenResponse = Http::get('https://graph.facebook.com/v17.0/oauth/access_token', [
             'client_id'     => config('services.facebook.page_client_id'),
             'client_secret' => config('services.facebook.page_client_secret'),
@@ -60,22 +61,82 @@ class FacebookController extends Controller
             ], 400);
         }
 
-        $userAccessToken = $tokenResponse['access_token'];
+        $shortLivedToken = $tokenResponse['access_token'];
 
-        $pagesResponse = Http::withToken($userAccessToken)
+        //Convert short-lived token → long-lived token (valid ~60 days)
+        $longLivedResponse = Http::get('https://graph.facebook.com/v17.0/oauth/access_token', [
+            'grant_type' => 'fb_exchange_token',
+            'client_id' => config('services.facebook.page_client_id'),
+            'client_secret' => config('services.facebook.page_client_secret'),
+            'fb_exchange_token' => $shortLivedToken,
+        ])->json();
+
+        if (!isset($longLivedResponse['access_token'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to convert to long-lived token',
+            ], 400);
+        }
+
+        $userLongLivedToken = $longLivedResponse['access_token'];
+
+        // Get all pages for user using long-lived token
+        $pagesResponse = Http::withToken($userLongLivedToken)
             ->get('https://graph.facebook.com/v17.0/me/accounts')
             ->json();
 
         $pagesJson = urlencode(json_encode($pagesResponse['data']));
 
+        // Pass back to frontend
         $query = http_build_query([
             'user_id' => auth()->id(),
-            'access_token' => $userAccessToken,
+            'access_token' => $userLongLivedToken, // long-lived
             'pages' => $pagesJson,
         ]);
 
         return redirect(config('app.frontend_url') . "/facebook/callback?$query");
     }
+
+    //old
+    // public function callback(Request $request)
+    // {
+    //     if (!$request->has('code')) {
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'Authorization code missing',
+    //         ], 400);
+    //     }
+
+    //     $tokenResponse = Http::get('https://graph.facebook.com/v17.0/oauth/access_token', [
+    //         'client_id'     => config('services.facebook.page_client_id'),
+    //         'client_secret' => config('services.facebook.page_client_secret'),
+    //         'redirect_uri'  => config('services.facebook.page_redirect'),
+    //         'code'          => $request->code,
+    //     ])->json();
+
+    //     if (!isset($tokenResponse['access_token'])) {
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'Failed to retrieve access token',
+    //         ], 400);
+    //     }
+
+    //     $userAccessToken = $tokenResponse['access_token'];
+
+    //     $pagesResponse = Http::withToken($userAccessToken)
+    //         ->get('https://graph.facebook.com/v17.0/me/accounts')
+    //         ->json();
+
+    //     $pagesJson = urlencode(json_encode($pagesResponse['data']));
+
+    //     $query = http_build_query([
+    //         'user_id' => auth()->id(),
+    //         'access_token' => $userAccessToken,
+    //         'pages' => $pagesJson,
+    //     ]);
+
+    //     return redirect(config('app.frontend_url') . "/facebook/callback?$query");
+    // }
 
     public function connectPage(Request $request)
     {
@@ -84,6 +145,20 @@ class FacebookController extends Controller
             'page_name'  => 'required|string',
             'page_token' => 'required|string',
         ]);
+
+        $existingAccount = UserBusinessAccount::where('user_id', auth()->id())
+            ->where('provider', 'facebook')
+            ->first();
+
+        // Already connected with another page
+        if ($existingAccount && $existingAccount->provider_account_id !== $request->page_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You can only reconnect your previously connected Facebook page.',
+                'allowed_page_id' => $existingAccount->provider_account_id,
+                'allowed_page_name' => $existingAccount->business_name,
+            ], 403);
+        }
 
         $account = UserBusinessAccount::updateOrCreate(
             [
@@ -110,6 +185,7 @@ class FacebookController extends Controller
         ]);
     }
 
+    //new
     public function pages()
     {
         $accounts = UserBusinessAccount::where('user_id', auth()->id())
@@ -125,11 +201,63 @@ class FacebookController extends Controller
             ], 404);
         }
 
+        $accounts = $accounts->map(function ($account) {
+            try {
+                $response = Http::get('https://graph.facebook.com/debug_token', [
+                    'input_token' => $account->access_token,
+                    'access_token' => config('services.facebook.page_client_id') . '|' . config('services.facebook.page_client_secret'),
+                ]);
+
+                $data = $response->json()['data'] ?? [];
+
+                // Token validity flag
+                $account->is_token_valid = $data['is_valid'] ?? false;
+
+                // Expiry date
+                $account->token_expires_at_live = isset($data['expires_at'])
+                    ? \Carbon\Carbon::createFromTimestamp($data['expires_at'])
+                    : null;
+            } catch (\Exception $e) {
+                $account->is_token_valid = false;
+                $account->token_expires_at_live = null;
+            }
+
+            return $account;
+        });
+
         return response()->json([
             'success' => true,
             'pages' => $accounts,
         ]);
     }
+
+    //old
+    // public function pages()
+    // {
+    //     $accounts = UserBusinessAccount::where('user_id', auth()->id())
+    //         ->where('provider', 'facebook')
+    //         ->where('status', 'connected')
+    //         ->get();
+
+    //     if ($accounts->isEmpty()) {
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'No Facebook page connected',
+    //             'pages'   => []
+    //         ], 404);
+    //     }
+
+    //     return response()->json([
+    //         'success' => true,
+    //         'pages' => $accounts,
+    //     ]);
+    // }
+
+
+
+
+
+
 
     public function reviews()
     {
@@ -199,7 +327,6 @@ class FacebookController extends Controller
             'data' => $data['data'],
         ]);
     }
-
 
     public function reply(Request $request)
     {

@@ -86,6 +86,125 @@ class SubscriptionController extends Controller
         }
     }
 
+    public function createPaymentIntent(Request $request): JsonResponse
+    {
+        $request->validate([
+            'plan_id' => 'required|exists:plans,id',
+        ]);
+
+        $user = $request->user();
+        $plan = Plan::findOrFail($request->plan_id);
+
+        if (! $user->hasStripeId()) {
+            $user->createAsStripeCustomer();
+        }
+
+        Stripe::setApiKey(config('cashier.secret'));
+
+        $paymentIntent = PaymentIntent::create([
+            'amount' => (int) ($plan->price * 100),
+            'currency' => strtolower($plan->currency ?? 'usd'),
+            'customer' => $user->stripe_id,
+            'automatic_payment_methods' => [
+                'enabled' => true,
+                'allow_redirects' => 'never',
+            ],
+            'setup_future_usage' => 'off_session',
+            'metadata' => [
+                'purpose' => 'subscription_initial_payment',
+                'plan_id' => $plan->id,
+                'user_id' => $user->id,
+            ],
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'client_secret' => $paymentIntent->client_secret,
+        ]);
+    }
+
+    public function buyNow(Request $request): JsonResponse
+    {
+        $request->validate([
+            'plan_id' => 'required|exists:plans,id',
+            'payment_intent_id' => 'required|string',
+            'auto_renew' => 'required|boolean',
+        ]);
+
+        try {
+            $user = $request->user();
+            $plan = Plan::findOrFail($request->plan_id);
+            $paymentIntentId = $request->payment_intent_id;
+            $autoRenew = $request->auto_renew;
+
+            if ($user->subscribed('default')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You already have an active subscription',
+                ], 400);
+            }
+
+            Stripe::setApiKey(config('cashier.secret'));
+            
+            $paymentIntent = PaymentIntent::retrieve($paymentIntentId);
+
+            if ($paymentIntent->status !== 'succeeded') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Payment not completed',
+                    'status' => $paymentIntent->status,
+                ], 400);
+            }
+
+            $paymentMethodId = $paymentIntent->payment_method;
+
+            if (! collect($user->paymentMethods())->contains('id', $paymentMethodId)) {
+                $user->addPaymentMethod($paymentMethodId);
+            }
+
+            $user->updateDefaultPaymentMethod($paymentMethodId);
+
+            $subscription = $user
+                ->newSubscription('default', $plan->stripe_price_id)
+                ->create(null, [
+                    'metadata' => [
+                        'plan_id' => $plan->id,
+                        'auto_renew' => $autoRenew ? 'yes' : 'no',
+                        'payment_intent_id' => $paymentIntentId,
+                    ],
+                ]);
+
+            if (! $autoRenew) {
+                $subscription->cancelAtPeriodEnd();
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Subscription activated successfully',
+                'data' => [
+                    'status' => $subscription->stripe_status,
+                    'auto_renew' => ! $subscription->cancel_at_period_end,
+                    'current_period_end' => $subscription->currentPeriodEnd()?->toDateTimeString(),
+                ],
+            ]);
+
+        } catch (ApiErrorException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Stripe error occurred',
+                'error' => $e->getMessage(),
+            ], 500);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to process subscription',
+                'error' => $e->getMessage(),
+            ], 500);
+
+        }
+    }
+
     public function createSetupIntent(Request $request): JsonResponse
     {
         $request->validate([
@@ -139,7 +258,7 @@ class SubscriptionController extends Controller
                 'error' => $e->getMessage(),
             ], 500);
         }
-    }
+    }   
 
     public function startFreeTrial(Request $request): JsonResponse
     {
@@ -152,6 +271,8 @@ class SubscriptionController extends Controller
         try {
             $user = $request->user();
             $plan = Plan::findOrFail($request->plan_id);
+            $setup_intent_id = $request->setup_intent_id;
+            $autoRenew = $request->auto_renew;
 
             if ($user->subscribed('default')) {
                 return response()->json([
@@ -160,25 +281,6 @@ class SubscriptionController extends Controller
                 ], 400);
             }
 
-            return $this->startTrial(
-                $user,
-                $plan,
-                $request->setup_intent_id,
-                $request->auto_renew
-            );
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to process purchase',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
-    }
-
-    private function startTrial($user, Plan $plan, string $setup_intent_id, bool $autoRenew): JsonResponse
-    {
-        try {
             Stripe::setApiKey(config('cashier.secret'));
             $setupIntent = SetupIntent::retrieve($setup_intent_id);
 
@@ -248,138 +350,11 @@ class SubscriptionController extends Controller
                 'message' => 'Failed to start trial',
                 'error' => $e->getMessage(),
             ], 500);
-        }
-    }
 
-    public function createPaymentIntent(Request $request): JsonResponse
-    {
-        $request->validate([
-            'plan_id' => 'required|exists:plans,id',
-        ]);
-
-        $user = $request->user();
-        $plan = Plan::findOrFail($request->plan_id);
-
-        if (! $user->hasStripeId()) {
-            $user->createAsStripeCustomer();
-        }
-
-        Stripe::setApiKey(config('cashier.secret'));
-
-        $paymentIntent = PaymentIntent::create([
-            'amount' => (int) ($plan->price * 100),
-            'currency' => strtolower($plan->currency ?? 'usd'),
-            'customer' => $user->stripe_id,
-            'automatic_payment_methods' => [
-                'enabled' => true,
-                'allow_redirects' => 'never',
-            ],
-            'setup_future_usage' => 'off_session',
-            'metadata' => [
-                'purpose' => 'subscription_initial_payment',
-                'plan_id' => $plan->id,
-                'user_id' => $user->id,
-            ],
-        ]);
-
-        return response()->json([
-            'success' => true,
-            'client_secret' => $paymentIntent->client_secret,
-        ]);
-    }
-
-    public function buyNow(Request $request): JsonResponse
-    {
-        $request->validate([
-            'plan_id' => 'required|exists:plans,id',
-            'payment_intent_id' => 'required|string',
-            'auto_renew' => 'required|boolean',
-        ]);
-
-        try {
-            $user = $request->user();
-            $plan = Plan::findOrFail($request->plan_id);
-
-            if ($user->subscribed('default')) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'You already have an active subscription',
-                ], 400);
-            }
-
-            return $this->processImmediatePurchase(
-                $user,
-                $plan,
-                $request->payment_intent_id,
-                $request->auto_renew
-            );
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to process purchase',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
-    }
-
-    private function processImmediatePurchase($user, Plan $plan, string $paymentIntentId, bool $autoRenew): JsonResponse
-    {
-        try {
-            Stripe::setApiKey(config('cashier.secret'));
-
-            $paymentIntent = PaymentIntent::retrieve($paymentIntentId);
-
-            if ($paymentIntent->status !== 'succeeded') {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Payment not completed',
-                    'status' => $paymentIntent->status,
-                ], 400);
-            }
-
-            $paymentMethodId = $paymentIntent->payment_method;
-
-            if (! collect($user->paymentMethods())->contains('id', $paymentMethodId)) {
-                $user->addPaymentMethod($paymentMethodId);
-            }
-
-            $user->updateDefaultPaymentMethod($paymentMethodId);
-
-            $subscription = $user
-                ->newSubscription('default', $plan->stripe_price_id)
-                ->create(null, [
-                    'metadata' => [
-                        'plan_id' => $plan->id,
-                        'auto_renew' => $autoRenew ? 'yes' : 'no',
-                        'payment_intent_id' => $paymentIntentId,
-                    ],
-                ]);
-
-            if (! $autoRenew) {
-                $subscription->cancelAtPeriodEnd();
-            }
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Subscription activated successfully',
-                'data' => [
-                    'status' => $subscription->stripe_status,
-                    'auto_renew' => ! $subscription->cancel_at_period_end,
-                    'current_period_end' => $subscription->currentPeriodEnd()?->toDateTimeString(),
-                ],
-            ]);
-
-        } catch (ApiErrorException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Stripe error occurred',
-                'error' => $e->getMessage(),
-            ], 500);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to process subscription',
                 'error' => $e->getMessage(),
             ], 500);
         }

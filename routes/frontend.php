@@ -9,6 +9,7 @@ use App\Http\Controllers\Frontend\GmbController;
 use App\Http\Controllers\Frontend\BasicSettingController;
 use App\Http\Controllers\Frontend\DashboardController;
 use App\Http\Controllers\Frontend\MessageTemplateController;
+use App\Http\Controllers\Frontend\NotificationController;
 use App\Http\Controllers\Frontend\QrController;
 use App\Http\Controllers\Frontend\ReviewReqController;
 use App\Http\Controllers\Frontend\UserProfileController;
@@ -28,7 +29,6 @@ Route::middleware('guest:sanctum')->group(function () {
         Route::post('resend-otp', 'resendOtp')->middleware('throttle:resend-otp');
         Route::post('reset-password', 'resetPassword');
     });
-
 
     Route::controller(SocialiteController::class)->group(function () {
         Route::get('/auth/{provider}/redirect', 'redirect');
@@ -78,6 +78,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // User Profile
     Route::controller(UserProfileController::class)->group(function () {
+        Route::get('auth/me', 'authMe');
         Route::get('user-profile/show', 'showProfile');
         Route::put('user-profile/update', 'update');
         Route::get('user-profile/integration', 'integration');
@@ -135,7 +136,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
 // For Subscription & plan.
 Route::middleware('auth:sanctum')->group(function () {
-    
+
     // Payment Methods
     Route::prefix('payment-methods')->group(function () {
         Route::get('/', [PaymentMethodController::class, 'index']);
@@ -188,6 +189,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/2fa/setup', [TwoFactorController::class, 'setup']);
     Route::post('/2fa/confirm', [TwoFactorController::class, 'confirm']);
     Route::post('/2fa/disable', [TwoFactorController::class, 'disable']);
+});
+
+Route::middleware('auth:sanctum')->group(function () {
+
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
+    Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
+
 });
 
 

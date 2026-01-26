@@ -39,4 +39,6 @@ use App\Http\Controllers\Backend\UserProfileManageController;
         Route::put('/admin/user-profile-Update/{id}', [UserProfileManageController::class, 'userDetailsUpdate']);
         Route::get('/admin/user-profile-integration/{id}', [UserProfileManageController::class, 'userIntegrationDetails']);
         Route::put('/admin/user-profile-integration-status-update/{id}', [UserProfileManageController::class, 'userIntegrationStatusUpdate']);
+
+        Route::delete('/admin/user-business-account-remove/{id}', [UserProfileManageController::class, 'removeUserProviderAccount']);
     });
