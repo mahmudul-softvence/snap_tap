@@ -11,6 +11,9 @@ use Stripe\Stripe;
 use Stripe\SetupIntent;
 use Stripe\PaymentIntent;
 use Stripe\Exception\ApiErrorException;
+use App\Notifications\CustomerPlanUpgradedNotification;
+use App\Models\User;
+use App\Models\Setting;
 
 class SubscriptionController extends Controller
 {
@@ -420,7 +423,7 @@ class SubscriptionController extends Controller
         try {
             $user = $request->user();
             $subscription = $user->subscription('default');
-
+            
             if (! $subscription || ! $subscription->valid()) {
                 return response()->json([
                     'success' => false,
@@ -435,6 +438,7 @@ class SubscriptionController extends Controller
                 ], 422);
             }
 
+            $oldPlan = $subscription->stripe_price;
             $newPlan = Plan::findOrFail($request->plan_id);
 
             if (! $newPlan->stripe_price_id) {
@@ -452,8 +456,17 @@ class SubscriptionController extends Controller
                     'message' => 'You are already on this plan',
                 ], 409);
             }
-
+        
             $subscription->swap($newPlan->stripe_price_id);
+            
+            $notifyEnabled = Setting::where('key', 'customer_plan_upgraded_n')
+            ->where('value', '1')
+            ->exists();
+
+            if ($notifyEnabled) {
+                $superAdmin = User::role('super_admin')->first();
+                $superAdmin->notify(new \App\Notifications\CustomerPlanUpgradedNotification($user, $oldPlan, $newPlan->name ));
+            }
 
             return response()->json([
                 'success' => true,
