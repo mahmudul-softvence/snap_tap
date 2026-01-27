@@ -84,6 +84,12 @@ class DashboardController extends Controller
 
         $dbReviews = GetReview::where('user_id', $userId)->get();
 
+        $response_rate = $total_request > 0
+            ? round((GetReview::where('user_id', $userId)
+                ->where('status', 'reviewed')
+                ->count() / $total_request) * 100, 2)
+            : 0;
+
         foreach ($dbReviews as $review) {
 
             $createdAt = Carbon::parse($review->reviewed_at ?? $review->created_at);
@@ -146,15 +152,12 @@ class DashboardController extends Controller
             $months->push([
                 'month' => $month->format('M'),
                 'year'  => $month->year,
-                'total_requests' => $total,
-                'reviewed_requests' => $reviewed,
-                'response_rate' => $total > 0
-                    ? round(($reviewed / $total) * 100, 2)
-                    : 0,
+                'sent_request' => $total,
+                'reviews_received' => $reviewed,
             ]);
         }
 
-        $recent_request = Review::latest()->take(10)->get();
+        // $recent_request = Review::latest()->take(10)->get();
 
         return response()->json([
             'success' => true,
@@ -162,6 +165,7 @@ class DashboardController extends Controller
                 'total_request' => $total_request,
                 'total_review'  => $total_review,
                 'avg_rating'    => $avg_rating,
+                'response_rate'    => $response_rate,
 
                 'facebook_review_count_current_month' => $facebookReviewCount,
                 'google_review_count_current_month'   => $googleReviewCount,
@@ -169,7 +173,7 @@ class DashboardController extends Controller
                 'star_breakdown_current_month' => $starBreakdown,
                 'last_6_months' => $months,
 
-                'recent_request' => $recent_request,
+                // 'recent_request' => $recent_request,
             ],
         ]);
     }
@@ -178,7 +182,7 @@ class DashboardController extends Controller
 
 
 
-// -------------------Live data from fb and google start here------------------
+    // -------------------Live data from fb and google start here------------------
     // public function dashboard()
     // {
 
@@ -476,7 +480,7 @@ class DashboardController extends Controller
     //         default => 0,
     //     };
     // }
-// -------------------Live data from fb and google end here-------------------
+    // -------------------Live data from fb and google end here-------------------
 
 
     // public function analytics()
