@@ -41,6 +41,10 @@ class BasicSettingController extends Controller
             'timezone'              => 'nullable|boolean',
             'auto_request_auto'     => 'nullable|boolean',
 
+            'auto_ai_reply'          => 'nullable|boolean',
+            'auto_ai_review_request' => 'nullable|boolean',
+            'multi_language_ai'      => 'nullable|boolean',
+
             'review_sent_time'      => 'nullable|date',
             'lang'                  => 'nullable|string|max:5',
             'date_format'           => 'nullable|string|in:dd/mm/yyyy,yyyy/mm/dd',
