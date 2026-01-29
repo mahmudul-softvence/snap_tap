@@ -37,7 +37,7 @@ class SettingController extends Controller
             'facebook_page_redirect_uri'  => config('services.facebook.page_redirect'),
             'google_login_redirect_uri'   => config('services.google.redirect'),
             'google_business_redirect_uri'   => config('services.google.business_redirect'),
-            'stripe_webhook_redirect_uri'   => config('services.stripe.webhook_redirect'),
+            'stripe_webhook_redirect_uri'   => config('cashier.webhook_redirect'),
         ];
 
 
