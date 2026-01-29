@@ -11,6 +11,9 @@ use Stripe\Stripe;
 use Stripe\SetupIntent;
 use Stripe\PaymentIntent;
 use Stripe\Exception\ApiErrorException;
+use App\Notifications\CustomerPlanUpgradedNotification;
+use App\Models\User;
+use App\Models\Setting;
 
 class SubscriptionController extends Controller
 {
@@ -63,13 +66,14 @@ class SubscriptionController extends Controller
                 'start' => $displayStartDate?->format('Y-m-d'),
                 'ends' => $displayEndDate?->format('Y-m-d'),
                 'renew_on' => $renewOn?->format('Y-m-d'),
-                'on_trial' => $subscription->onTrial(),
-                'canceled' => $subscription->canceled(),
-                'on_grace_period' => $subscription->onGracePeriod(),
-                'active' => $subscription->active(),
-                'feature' => $plan->features,
-                'card_info' =>  $formattedMethods,
+                // 'on_trial' => $subscription->onTrial(),
+                // 'canceled' => $subscription->canceled(),
+                // 'on_grace_period' => $subscription->onGracePeriod(),
+                // 'active' => $subscription->active(), 
                 'review_request' => $review_request,
+                'card_info' =>  $formattedMethods,
+                'user_name' => $user->name,
+                'feature' => $plan->features,
             ];
 
             return response()->json([
@@ -420,7 +424,7 @@ class SubscriptionController extends Controller
         try {
             $user = $request->user();
             $subscription = $user->subscription('default');
-
+            
             if (! $subscription || ! $subscription->valid()) {
                 return response()->json([
                     'success' => false,
@@ -428,13 +432,15 @@ class SubscriptionController extends Controller
                 ], 422);
             }
 
-            if ($subscription->cancelled()) {
+            if ($subscription->canceled()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Cancelled subscriptions cannot be changed',
                 ], 422);
             }
 
+
+            $oldPlan = $subscription->stripe_price;
             $newPlan = Plan::findOrFail($request->plan_id);
 
             if (! $newPlan->stripe_price_id) {
@@ -452,8 +458,17 @@ class SubscriptionController extends Controller
                     'message' => 'You are already on this plan',
                 ], 409);
             }
-
+        
             $subscription->swap($newPlan->stripe_price_id);
+            
+            $notifyEnabled = Setting::where('key', 'customer_plan_upgraded_n')
+            ->where('value', '1')
+            ->exists();
+
+            if ($notifyEnabled) {
+                $superAdmin = User::role('super_admin')->first();
+                $superAdmin->notify(new CustomerPlanUpgradedNotification($user, $oldPlan, $newPlan->name ));
+            }
 
             return response()->json([
                 'success' => true,
