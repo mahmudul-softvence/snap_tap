@@ -18,6 +18,7 @@ return new class extends Migration
             $table->longText('content')->nullable();
             $table->string('method');
             $table->integer('review_type');
+            $table->integer('review_count')->default(0);
             $table->boolean('is_active')->default(true);
             $table->timestamps();
         });
