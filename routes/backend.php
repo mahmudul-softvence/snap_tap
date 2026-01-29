@@ -20,6 +20,8 @@ use App\Http\Controllers\Backend\UserProfileManageController;
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('/adminplan', [AdminPlanController::class, 'index']);
         Route::post('/plan/create', [AdminPlanController::class, 'store']);
+        Route::delete('/plan/delete/{id}', [AdminPlanController::class, 'deletePlan']);
+        Route::put('/plan/edit/{id}', [AdminPlanController::class, 'editPlan']);
         Route::get('/admin-dashboard', [AdminSubscriptionController::class, 'adminDashboard']);
         Route::get('/admin-subscription-dashboard', [AdminSubscriptionController::class, 'adminSubscriptionDashboard']);
         Route::post('/admin/subscriptions/change-subscription', [AdminSubscriptionController::class, 'changeSubscription']);
