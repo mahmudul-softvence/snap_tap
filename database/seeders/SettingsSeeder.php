@@ -87,27 +87,6 @@ class SettingsSeeder extends Seeder
                 'value' => 'USA',
                 'is_sensitive' => false,
             ],
-
-            /*
-            |--------------------------------------------------------------------------
-            | AI AGENT
-            |--------------------------------------------------------------------------
-            */
-            [
-                'key' => 'auto_ai_reply',
-                'value' => false,
-                'is_sensitive' => false,
-            ],
-            [
-                'key' => 'auto_ai_review_request',
-                'value' => false,
-                'is_sensitive' => false,
-            ],
-            [
-                'key' => 'multi_language_ai',
-                'value' =>  false,
-                'is_sensitive' => false,
-            ],
             /*
             |--------------------------------------------------------------------------
             | Notification
@@ -213,6 +192,36 @@ class SettingsSeeder extends Seeder
             [
                 'key' => 'google_client_secret',
                 'value' => '69764ccd219cb37e60651b7f411b874',
+                'is_sensitive' => true,
+            ],
+            /*
+            |--------------------------------------------------------------------------
+            | STRIPE Settings (STRIPE)
+            |--------------------------------------------------------------------------
+            */
+            [
+                'key' => 'stripe_publishable_key',
+                'value' => 'pk_test_51K7D80H234567890',
+                'is_sensitive' => false,
+            ],
+            [
+                'key' => 'stripe_secret_key',
+                'value' => 'sk_test_51K7D80H234567890',
+                'is_sensitive' => false,
+            ],
+            [
+                'key' => 'stripe_signing_secret',
+                'value' => '69764ccd219cb37e60651b7f411b874',
+                'is_sensitive' => true,
+            ],
+            /*
+            |--------------------------------------------------------------------------
+            | ChatGPT Settings (chatgpt)
+            |--------------------------------------------------------------------------
+            */
+            [
+                'key' => 'chatgpt_api_key',
+                'value' => 'sk-1234567890abcdef',
                 'is_sensitive' => true,
             ],
         ];

@@ -52,12 +52,6 @@ return [
         'business_redirect'      => null,
     ],
 
-    'stripe' => [
-        'secret'     => env('STRIPE_SECRET'),
-        'key' => env('STRIPE_KEY'),
-        'webhook_secret'     => env('STRIPE_WEBHOOK_SECRET')
-    ],
-
     'facebook' => [
         // User Login App
         'client_id'     => null,
@@ -69,5 +63,6 @@ return [
         'page_client_secret' => null,
         'page_redirect'      => null,
     ],
+
 
 ];
