@@ -73,9 +73,8 @@ class AdminPlanController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'billing_cycle' => 'required|in:monthly,quarterly,semiannual,yearly',
+            'billing_cycle' => 'required|in:monthly,quarterly,biannual,yearly',
         ]);
-
 
         try {
             $stripeProduct = $this->stripe->products->create([
@@ -135,6 +134,10 @@ class AdminPlanController extends Controller
 
     public function editPlan(Request $request, int $id)
     {
+        $request->validate([
+            'billing_cycle' => 'required|in:monthly,quarterly,biannual,yearly',
+        ]);
+        
         DB::beginTransaction();
 
         try {
@@ -154,13 +157,22 @@ class AdminPlanController extends Controller
                     $plan->stripe_price_id,
                     ['active' => false]
                 );
+                $billingMap = [
+                    'monthly'    => ['interval' => 'month', 'count' => 1],
+                    'quarterly'  => ['interval' => 'month', 'count' => 3],
+                    'biannual'   => ['interval' => 'month', 'count' => 6],
+                    'yearly'     => ['interval' => 'year',  'count' => 1],
+                ];
+
+                $cycle = $billingMap[$request->billing_cycle];
 
                 $newStripePrice = $this->stripe->prices->create([
                     'product' => $plan->stripe_product_id,
                     'unit_amount' => $request->price * 100,
                     'currency' => 'usd',
                     'recurring' => [
-                        'interval' => $request->billing_cycle,
+                        'interval' => $cycle['interval'],
+                        'interval_count' => $cycle['count'],
                     ],
                 ]);
 
