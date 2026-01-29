@@ -51,6 +51,8 @@ class ReplyToReviewJob implements ShouldQueue
                 'message' => $replyText,
             ]);
 
+        $aiAgent->increment('review_count');
+
         $this->review->update([
             'status' => 'ai_replied',
             'reply_text' => $replyText,

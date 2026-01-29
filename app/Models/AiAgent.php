@@ -12,6 +12,7 @@ class AiAgent extends Model
         'content',
         'method',
         'review_type',
+        'review_count',
         'is_active',
     ];
 
