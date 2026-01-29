@@ -73,11 +73,9 @@ class AdminPlanController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'name' => 'required|string|max:255',
-            'price' => 'required|numeric',
-            'billing_cycle' => 'required|string|in:month,year',
-            'features' => 'nullable|array',
+            'billing_cycle' => 'required|in:monthly,quarterly,semiannual,yearly',
         ]);
+
 
         try {
             $stripeProduct = $this->stripe->products->create([
@@ -85,20 +83,28 @@ class AdminPlanController extends Controller
                 'type' => 'service',
             ]);
 
+            $billingMap = [
+                'monthly'    => ['interval' => 'month', 'count' => 1],
+                'quarterly'  => ['interval' => 'month', 'count' => 3],
+                'biannual'   => ['interval' => 'month', 'count' => 6],
+                'yearly'     => ['interval' => 'year',  'count' => 1],
+            ];
+
+            $cycle = $billingMap[$request->billing_cycle];
+
             $stripePrice = $this->stripe->prices->create([
                 'product' => $stripeProduct->id,
-                'unit_amount' => $request->price * 100, 
-                'currency' => 'usd', 
+                'unit_amount' => $request->price * 100,
+                'currency' => 'usd',
                 'recurring' => [
-                    'interval' => $request->billing_cycle,
-                    'interval_count' => 1,
+                    'interval' => $cycle['interval'],
+                    'interval_count' => $cycle['count'],
                 ],
             ]);
 
-            $plan = Plan::create([
+            Plan::create([
                 'name' => $request->name,
                 'price' => $request->price,
-                'billing_cycle' => $request->billing_cycle,
                 'stripe_product_id' => $stripeProduct->id,
                 'stripe_price_id' => $stripePrice->id,
                 'platforms' => $request->platforms,
@@ -106,6 +112,8 @@ class AdminPlanController extends Controller
                 'review_reply_credits' => $request->review_reply_credits,
                 'total_ai_agent' => $request->total_ai_agent,
                 'stripe_price_id' => $stripePrice->id,
+                'interval' => $cycle['interval'],
+                'interval_count' => $cycle['count'],
                 'features' => $request->features,
                 'is_active' => $request->active_plan ? 1 : 0,
                 'allow_trial' => $request->start_with_free_trail ? 1 : 0,
@@ -114,7 +122,6 @@ class AdminPlanController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Plan created successfully',
-                'data' => $plan,
             ]);
 
         } catch (\Exception $e) {
@@ -163,7 +170,6 @@ class AdminPlanController extends Controller
             $plan->update([
                 'name' => $request->name,
                 'price' => $request->price,
-                'billing_cycle' => $request->billing_cycle,
                 'platforms' => $request->platforms,
                 'request_credits' => $request->request_credits,
                 'review_reply_credits' => $request->review_reply_credits,
@@ -181,7 +187,9 @@ class AdminPlanController extends Controller
             ]);
 
         } catch (ApiErrorException $e) {
+
             DB::rollBack();
+
             return response()->json([
                 'success' => false,
                 'message' => 'Stripe error occurred',
@@ -189,7 +197,9 @@ class AdminPlanController extends Controller
             ], 500);
 
         } catch (\Throwable $e) {
+
             DB::rollBack();
+            
             return response()->json([
                 'success' => false,
                 'message' => 'Plan update failed',
@@ -201,6 +211,10 @@ class AdminPlanController extends Controller
 
     public function deletePlan(int $id): JsonResponse
     {
+        validator(['id' => $id], [
+            'id' => 'required|integer|exists:plans,id',
+        ])->validate();
+
         DB::beginTransaction();
 
         try {
@@ -237,6 +251,7 @@ class AdminPlanController extends Controller
             ]);
 
         } catch (ApiErrorException $e) {
+
             DB::rollBack();
 
             return response()->json([
