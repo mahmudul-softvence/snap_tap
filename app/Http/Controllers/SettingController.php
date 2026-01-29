@@ -37,6 +37,7 @@ class SettingController extends Controller
             'facebook_page_redirect_uri'  => config('services.facebook.page_redirect'),
             'google_login_redirect_uri'   => config('services.google.redirect'),
             'google_business_redirect_uri'   => config('services.google.business_redirect'),
+            'stripe_webhook_redirect_uri'   => config('services.stripe.webhook_redirect'),
         ];
 
 
@@ -106,7 +107,9 @@ class SettingController extends Controller
             'facebook_page_client_secret',
             'google_client_secret',
             'twilio_sid',
-            'twilio_auth_token'
+            'twilio_auth_token',
+            'stripe_signing_secret',
+            'chatgpt_api_key'
         ];
 
         // Image fields
