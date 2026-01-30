@@ -23,12 +23,36 @@ class AdminPlanController extends Controller
     public function index(Request $request): JsonResponse
     {
         try {
-           $plans = Plan::query()
-                ->with([
-                    'subscriptionItems.subscription'
-                ])
-                ->latest()
-                ->paginate($request->integer('per_page', 10));
+            $query = Plan::query()
+                      ->with(['subscriptionItems.subscription']);
+
+            if ($request->filled('status')) {
+                match ($request->status) {
+                    'active'   => $query->where('is_active', 1),
+                    'inactive' => $query->where('is_active', 0),
+                    default    => null,
+                };
+            }
+
+            if ($request->filled('plan_id')) {
+                $query->where('id', $request->plan_id);
+            }
+            
+            if ($request->filled('search')) {
+                $search = $request->search;
+
+                $query->where(function ($q) use ($search) {
+                    $q->where('id', 'like', "%{$search}%")
+                    ->orWhere('name', 'like', "%{$search}%");
+                });
+            }
+
+            $sortDirection = $request->get('sort', 'desc');
+            $query->orderBy('created_at', $sortDirection);
+
+             $plans = $query->paginate(
+                $request->integer('per_page', 10)
+            );
 
             $data = $plans->through(function ($plan) {
 
@@ -43,18 +67,19 @@ class AdminPlanController extends Controller
                     'id' => $plan->id,
                     'name' => $plan->name,
                     'price' => $plan->price,
-                    'features' => $plan->features,
+                    'currency' => $plan->currency,
                     'billing_cycle' => ucfirst($plan->interval),
-                    'trial_days' => $plan->trial_days,
                     'status' => $plan->is_active ? 'active' : 'inactive',
                     'total_subscribers' => $activeSubscribers,
-                    'created_on' => $plan->created_at->toDateString(),
+                    'features' => $plan->features,
                     'platforms' => $plan->platforms,
                     'request_credits' => $plan->request_credits,
                     'review_reply_credits' => $plan->review_reply_credits,
                     'total_ai_agent' => $plan->total_ai_agent,
+                    'created_on' => $plan->created_at->toDateString(),
                 ];
             });
+
 
         return response()->json([
             'success' => true,
