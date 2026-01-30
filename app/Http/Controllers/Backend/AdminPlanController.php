@@ -73,13 +73,48 @@ class AdminPlanController extends Controller
     public function store(Request $request)
     {
         $request->validate([
+            'name'          => 'required|string',
+            'price'         => 'required|numeric|min:0',
+            'currency'      => 'required|string|size:3',
             'billing_cycle' => 'required|in:monthly,quarterly,biannual,yearly',
         ]);
+
+        $supportedCurrencies = [
+            'AED','AFN','ALL','AMD','ANG','AOA','ARS','AUD','AWG','AZN',
+            'BAM','BBD','BDT','BGN','BIF','BMD','BND','BOB','BRL','BSD',
+            'BWP','BYN','BZD','CAD','CDF','CHF','CLP','CNY','COP','CRC',
+            'CVE','CZK','DJF','DKK','DOP','DZD','EGP','ETB','EUR','FJD',
+            'FKP','GBP','GEL','GIP','GMD','GNF','GTQ','GYD','HKD','HNL',
+            'HRK','HTG','HUF','IDR','ILS','INR','ISK','JMD','JPY','KES',
+            'KGS','KHR','KMF','KRW','KYD','KZT','LAK','LBP','LKR','LRD',
+            'LSL','MAD','MDL','MGA','MKD','MMK','MNT','MOP','MUR','MVR',
+            'MWK','MXN','MYR','MZN','NAD','NGN','NIO','NOK','NPR','NZD',
+            'PAB','PEN','PGK','PHP','PKR','PLN','PYG','QAR','RON','RSD',
+            'RUB','RWF','SAR','SBD','SCR','SEK','SGD','SHP','SLE','SOS',
+            'SRD','STD','SZL','THB','TJS','TOP','TRY','TTD','TWD','TZS',
+            'UAH','UGX','USD','UYU','UZS','VND','VUV','WST','XAF','XCD',
+            'XOF','XPF','YER','ZAR','ZMW'
+        ];
+
+        $currency = strtoupper($request->currency);
+
+        if (! in_array($currency, $supportedCurrencies)) {
+            abort(422, 'Unsupported currency');
+        }
+
+        $zeroDecimalCurrencies = [
+            'BIF','CLP','DJF','GNF','JPY','KMF',
+            'KRW','MGA','PYG','RWF','UGX',
+            'VND','VUV','XAF','XOF','XPF'
+        ];
+
+        $amount = in_array($currency, $zeroDecimalCurrencies) ? (int) $request->price : (int) ($request->price * 100);
+
+        DB::beginTransaction();
 
         try {
             $stripeProduct = $this->stripe->products->create([
                 'name' => $request->name,
-                'type' => 'service',
             ]);
 
             $billingMap = [
@@ -93,8 +128,8 @@ class AdminPlanController extends Controller
 
             $stripePrice = $this->stripe->prices->create([
                 'product' => $stripeProduct->id,
-                'unit_amount' => $request->price * 100,
-                'currency' => 'usd',
+                'unit_amount' => $amount,
+                'currency' => strtolower($currency),
                 'recurring' => [
                     'interval' => $cycle['interval'],
                     'interval_count' => $cycle['count'],
@@ -104,6 +139,7 @@ class AdminPlanController extends Controller
             Plan::create([
                 'name' => $request->name,
                 'price' => $request->price,
+                'currency' => $currency,
                 'stripe_product_id' => $stripeProduct->id,
                 'stripe_price_id' => $stripePrice->id,
                 'platforms' => $request->platforms,
@@ -118,12 +154,15 @@ class AdminPlanController extends Controller
                 'allow_trial' => $request->start_with_free_trail ? 1 : 0,
             ]);
 
+            DB::commit();
+
             return response()->json([
                 'success' => true,
                 'message' => 'Plan created successfully',
             ]);
 
         } catch (\Exception $e) {
+            DB::rollBack();
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to create plan',
@@ -135,9 +174,11 @@ class AdminPlanController extends Controller
     public function editPlan(Request $request, int $id)
     {
         $request->validate([
+            'name'          => 'required|string',
+            'price'         => 'required|numeric|min:0',
             'billing_cycle' => 'required|in:monthly,quarterly,biannual,yearly',
         ]);
-        
+
         DB::beginTransaction();
 
         try {
@@ -150,26 +191,32 @@ class AdminPlanController extends Controller
 
             $priceChanged =
                 $plan->price != $request->price ||
-                $plan->billing_cycle != $request->billing_cycle;
+                $plan->interval !== $this->mapInterval($request->billing_cycle)['interval'] ||
+                $plan->interval_count !== $this->mapInterval($request->billing_cycle)['count'];
 
             if ($priceChanged) {
+
                 $this->stripe->prices->update(
                     $plan->stripe_price_id,
                     ['active' => false]
                 );
-                $billingMap = [
-                    'monthly'    => ['interval' => 'month', 'count' => 1],
-                    'quarterly'  => ['interval' => 'month', 'count' => 3],
-                    'biannual'   => ['interval' => 'month', 'count' => 6],
-                    'yearly'     => ['interval' => 'year',  'count' => 1],
+
+                $zeroDecimalCurrencies = [
+                    'BIF','CLP','DJF','GNF','JPY','KMF',
+                    'KRW','MGA','PYG','RWF','UGX',
+                    'VND','VUV','XAF','XOF','XPF'
                 ];
 
-                $cycle = $billingMap[$request->billing_cycle];
+                $currency = strtoupper($plan->currency);
+
+                $amount = in_array($currency, $zeroDecimalCurrencies) ? (int) $request->price : (int) ($request->price * 100);
+
+                $cycle = $this->mapInterval($request->billing_cycle);
 
                 $newStripePrice = $this->stripe->prices->create([
                     'product' => $plan->stripe_product_id,
-                    'unit_amount' => $request->price * 100,
-                    'currency' => 'usd',
+                    'unit_amount' => $amount,
+                    'currency' => strtolower($currency),
                     'recurring' => [
                         'interval' => $cycle['interval'],
                         'interval_count' => $cycle['count'],
@@ -177,6 +224,8 @@ class AdminPlanController extends Controller
                 ]);
 
                 $plan->stripe_price_id = $newStripePrice->id;
+                $plan->interval = $cycle['interval'];
+                $plan->interval_count = $cycle['count'];
             }
 
             $plan->update([
@@ -198,8 +247,7 @@ class AdminPlanController extends Controller
                 'message' => 'Plan updated successfully',
             ]);
 
-        } catch (ApiErrorException $e) {
-
+        } catch (\Stripe\Exception\ApiErrorException $e) {
             DB::rollBack();
 
             return response()->json([
@@ -209,9 +257,8 @@ class AdminPlanController extends Controller
             ], 500);
 
         } catch (\Throwable $e) {
-
             DB::rollBack();
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'Plan update failed',
@@ -220,6 +267,15 @@ class AdminPlanController extends Controller
         }
     }
 
+    private function mapInterval(string $billingCycle): array
+    {
+        return [
+            'monthly'   => ['interval' => 'month', 'count' => 1],
+            'quarterly' => ['interval' => 'month', 'count' => 3],
+            'biannual'  => ['interval' => 'month', 'count' => 6],
+            'yearly'    => ['interval' => 'year',  'count' => 1],
+        ][$billingCycle];
+    }
 
     public function deletePlan(int $id): JsonResponse
     {
@@ -282,5 +338,4 @@ class AdminPlanController extends Controller
             ], 500);
         }
     }
-    
 }
