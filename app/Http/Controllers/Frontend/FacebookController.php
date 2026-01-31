@@ -14,8 +14,10 @@ use Illuminate\Support\Facades\Session;
 
 class FacebookController extends Controller
 {
-    public function authUrl()
+    public function authUrl(Request $request)
     {
+        $type = $request->type ?? 'web';
+
         $scope = [
             'pages_show_list',
             'pages_read_user_content',
@@ -29,6 +31,7 @@ class FacebookController extends Controller
             'response_type' => 'code',
             'scope'         => implode(',', $scope),
             'auth_type'     => 'rerequest',
+            'state'         => $type,
         ]);
 
         return response()->json([
@@ -39,6 +42,8 @@ class FacebookController extends Controller
     //new
     public function callback(Request $request)
     {
+        $type = $request->state ?? 'web';
+
         if (!$request->has('code')) {
             return response()->json([
                 'success' => false,
@@ -93,6 +98,15 @@ class FacebookController extends Controller
             'access_token' => $userLongLivedToken, // long-lived
             'pages' => $pagesJson,
         ]);
+
+        if ($type === 'app') {
+            return response()->json([
+                'success' => true,
+                'message' => 'Facebook connected',
+                'pages' => $pagesResponse['data'] ?? [],
+                'access_token' => $userLongLivedToken,
+            ]);
+        }
 
         return redirect(config('app.frontend_url') . "/facebook/callback?$query");
     }
