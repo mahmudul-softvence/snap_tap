@@ -439,8 +439,8 @@ class SubscriptionController extends Controller
                 ], 422);
             }
 
-
-            $oldPlan = $subscription->stripe_price;
+            $oldPlan = $subscription->getPlan();
+            
             $newPlan = Plan::findOrFail($request->plan_id);
 
             if (! $newPlan->stripe_price_id) {
