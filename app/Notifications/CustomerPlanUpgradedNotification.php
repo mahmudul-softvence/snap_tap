@@ -14,7 +14,7 @@ class CustomerPlanUpgradedNotification extends Notification implements ShouldQue
  
     public function __construct(
         protected User $user, 
-        protected string $oldPlan,
+        protected $oldPlan,
         protected string $newPlan
     ){}
 
