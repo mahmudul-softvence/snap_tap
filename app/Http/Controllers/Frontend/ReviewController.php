@@ -20,7 +20,7 @@ class ReviewController extends Controller
         $status    = strtolower($request->query('status', ''));       // replied / pending
         $search    = strtolower($request->query('search', ''));
         $sort      = strtolower($request->query('sort', 'latest'));   // latest / oldest / az
-        $limit     = intval($request->query('limit', 10));
+        $limit     = intval($request->query('per_page', 10));
         $replyType = $request->query('reply_type');                    // ai_reply / manual_reply
 
         $query = GetReview::where('user_id', auth()->id());
@@ -68,9 +68,9 @@ class ReviewController extends Controller
         // }
 
         // $reviews = $query->get();
-        $reviews = $query->paginate($limit); 
+        $reviews = $query->paginate($limit);
 
-        $formatted = $reviews->map(function ($review) {
+        $reviews->getCollection()->transform(function ($review) {
 
             $hasReply = !empty($review->review_reply_text);
 
@@ -84,6 +84,7 @@ class ReviewController extends Controller
                 'recommendation_type' => $review->rating >= 4 ? 'positive' : 'negative',
 
                 'reviewer_name' => $review->reviewer_name,
+
                 'reviewer_avatar' => $review->reviewer_image
                     ?? 'https://ui-avatars.com/api/?name=' . urlencode($review->reviewer_name),
 
@@ -96,17 +97,14 @@ class ReviewController extends Controller
                 'replies' => $hasReply ? [[
                     'reply_id' => $review->review_reply_id,
                     'reply_text' => $review->review_reply_text,
-                    'created_time' => Carbon::parse($review->replied_at)->format('Y-m-d H:i:s'),
+                    'created_time' => Carbon::parse($review->replied_at)
+                        ->format('Y-m-d H:i:s'),
                     'reply_type' => $review->ai_agent_id ? 'ai_reply' : 'manual_reply',
                 ]] : [],
             ];
         });
 
-        return response()->json([
-            'success' => true,
-            'total' => $formatted->count(),
-            'reviews' => $formatted->values(),
-        ]);
+        return response()->json($reviews);
     }
 
     public function reply(Request $request)
