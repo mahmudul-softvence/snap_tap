@@ -91,9 +91,22 @@ class AppServiceProvider extends ServiceProvider
         // -----------------------------
         // TWILIO / SMS
         // -----------------------------
-        Config::set('services.twilio.sid', Setting::where('key', 'twilio_sid')->value('value'));
-        Config::set('services.twilio.token', Setting::where('key', 'twilio_auth_token')->value('value'));
-        Config::set('services.twilio.from', Setting::where('key', 'twilio_from_number')->value('value'));
+        Config::set('services.twilio.sid', Setting::get('twilio_sid'));
+        Config::set('services.twilio.token', Setting::get('twilio_auth_token'));
+        Config::set('services.twilio.from', Setting::get('twilio_from_number'));
+
+        // -----------------------------
+        // STRIPE
+        //-----------------------------
+        Config::set('cashier.key', Setting::get('stripe_publishable_key'));
+        Config::set('cashier.secret', Setting::get('stripe_secret_key'));
+        Config::set('cashier.webhook.secret', Setting::get('stripe_signing_secret'));
+        Config::set('cashier.webhook_redirect', Setting::get('stripe_webhook_redirect', url('/stripe/webhook')));
+
+        // -----------------------------
+        // CHATGPT
+        Config::set('openai.api_key', Setting::get('chatgpt_api_key'));
+
 
         //CUSTOM MODELS
         Cashier::useSubscriptionModel(Subscription::class);

@@ -25,7 +25,7 @@ class DashboardController extends Controller
             ? round(($reviewed_reviews / $total_request) * 100, 2)
             : 0;
 
-        $recent_request = Review::latest()->take(10)->get();
+        $recent_request = auth()->user()->reviews()->latest()->take(10)->get();
 
         $reviews = GetReview::where('user_id', Auth::id())
             ->orderBy('reviewed_at', 'desc')

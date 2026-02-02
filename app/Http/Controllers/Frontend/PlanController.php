@@ -27,7 +27,9 @@ class PlanController extends Controller
                     'start_date' => $start_date->toDateString(),
                     'end_date'   => $end_date->toDateString(),
                     'interval'      => $plan->interval,
+                    'trail_days'      => $plan->trial_days,
                     'feautures'      => $plan->features,
+
                 ];
             }
 
@@ -60,6 +62,7 @@ class PlanController extends Controller
                     'start_date' => $start_date->toDateString(),
                     'end_date'   => $end_date->toDateString(),
                     'interval'      => $plan->interval,
+                    'trail_days'      => $plan->trial_days,
                     'feautures'      => $plan->features,
                 ];
 

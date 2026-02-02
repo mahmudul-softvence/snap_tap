@@ -25,6 +25,9 @@ class BasicSetting extends Model
         'lang',
         'date_format',
         'user_id',
+        'auto_ai_reply',
+        'auto_ai_review_request',
+        'multi_language_ai',
     ];
 
 
