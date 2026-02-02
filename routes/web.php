@@ -4,9 +4,12 @@ use App\Http\Controllers\Update\SystemUpdateController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-
     return view('frontend.index');
 });
+
+Route::get('/a', function () {
+    return view('frontend.email_verified');
+})->name('about');
 
 
 Route::get('/debug-subscription-class', function () {

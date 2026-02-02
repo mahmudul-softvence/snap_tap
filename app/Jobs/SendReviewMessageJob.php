@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Mail\ReviewRequestMail;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -54,23 +55,15 @@ class SendReviewMessageJob implements ShouldQueue
 
         if ($this->sendEmail && $review->email) {
             try {
-                $emailBody = nl2br(e($review->message)) . '
-                <br><br>
-                <a href="' . $reviewLink . '" style="color:#2563eb;font-weight:600;">
-                    Click here if you reviewd
-                </a>
-            ';
-
-                Mail::html($emailBody, function ($message) use ($review) {
-                    $message->to($review->email)
-                        ->subject('We’d Love Your Review!');
-                });
+                Mail::to($review->email)
+                    ->send(new ReviewRequestMail($review, $reviewLink));
 
                 $sent = true;
-            } catch (Exception $e) {
+            } catch (\Exception $e) {
                 Log::error('Email failed: ' . $e->getMessage());
             }
         }
+
 
         if ($this->sendSms && $review->phone) {
             try {

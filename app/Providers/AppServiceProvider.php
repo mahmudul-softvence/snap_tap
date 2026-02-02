@@ -45,10 +45,10 @@ class AppServiceProvider extends ServiceProvider
          * -----------------------
          */
         Config::set('mail.default', Setting::get('mail_mailer', 'smtp'));
-        Config::set('mail.mailers.smtp.host', Setting::get('mail_host', '127.0.0.1'));
+        Config::set('mail.mailers.smtp.host', Setting::get('mail_host', 'sandbox.smtp.mailtrap.io'));
         Config::set('mail.mailers.smtp.port', Setting::get('mail_port', 2525));
-        Config::set('mail.mailers.smtp.username', Setting::get('mail_username'));
-        Config::set('mail.mailers.smtp.password', Setting::get('mail_password'));
+        Config::set('mail.mailers.smtp.username', Setting::get('mail_username', '75897c9be1fd12'));
+        Config::set('mail.mailers.smtp.password', Setting::get('mail_password', '17c5f8ebe82a9d'));
         Config::set('mail.mailers.smtp.encryption', Setting::get('mail_encryption', 'tls'));
         Config::set('mail.from.address', Setting::get('mail_from_address', 'hello@example.com'));
         Config::set('mail.from.name', Setting::get('mail_from_name', config('app.name')));
