@@ -66,9 +66,17 @@ class ReplyToReviewJob implements ShouldQueue
             'messages' => [
                 [
                     'role' => 'user',
-                    "Instructions: $aiAgentContent\nReview: $reviewText \n\nNote: Do NOT include any personal information such as names, addresses, emails, or phone numbers. Only generate polite, professional feedback based on the review. Also make sure the reply in same language as the review [most important.]. Keep the reply between 20 to 40 words.",
+                    'content' => "Instructions: {$aiAgentContent}
+                        Review: {$reviewText}
+
+                        Note:
+                        - Do NOT include any personal information such as names, addresses, emails, or phone numbers.
+                        - Only generate polite, professional feedback based on the review.
+                        - Make sure the reply is in the SAME language as the review.
+                        - Keep the reply between 20 to 40 words.
+                        - Output ONLY the reply."
                 ],
-            ]
+            ],
         ]);
 
         if (isset($response['choices'][0]['message']['content'])) {

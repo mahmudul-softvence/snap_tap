@@ -12,6 +12,9 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use App\Jobs\ReviewReplyJob;
 use App\Jobs\ReviewReplyDeleteJob;
+use OpenAI\Laravel\Facades\OpenAI;
+
+
 
 class ReviewController extends Controller
 {
@@ -198,6 +201,66 @@ class ReviewController extends Controller
         ]);
     }
 
+
+    public function generate_ai_reply($id)
+    {
+
+        $review = GetReview::where('user_id', Auth::id())
+            ->where('provider_review_id', $id)
+            ->first();
+
+
+        if (!$review) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Review not found',
+            ], 404);
+        }
+
+        $genaratedReply = $this->generateReply($review->review_text);
+
+        return response()->json([
+            'success' => true,
+            'reply' => $genaratedReply,
+            'message' => 'AI reply generated',
+        ]);
+    }
+
+
+
+    protected function generateReply(string $reviewText): string
+    {
+        $response = OpenAI::chat()->create([
+            'model' => 'gpt-5.2',
+            'messages' => [
+                [
+                    'role' => 'system',
+                    'content' => "You are an AI assistant responsible for replying to user reviews.
+                        Read the review carefully and generate a polite, professional response that thanks the reviewer and acknowledges their feedback.
+
+                        Rules:
+                        - Do NOT include any personal information.
+                        - Keep the response professional, respectful, and positive.
+                        - Do NOT add new topics or assumptions.
+                        - Match the language of the review exactly.
+                        - Keep the reply between 20 to 40 words.
+                        - Output ONLY the review reply."
+                ],
+                [
+                    'role' => 'user',
+                    'content' => "Review: {$reviewText}"
+                ],
+            ],
+        ]);
+
+        if (isset($response['choices'][0]['message']['content'])) {
+            $replyText = $response['choices'][0]['message']['content'];
+        } else {
+            $replyText = 'Thank you for your review! We appreciate your feedback.';
+        }
+
+        return $replyText;
+    }
 
 
 

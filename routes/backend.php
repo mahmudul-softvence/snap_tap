@@ -32,6 +32,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('admin/customers/billing-history/{id}', [AdminSubscriptionController::class, 'billingHistory']);
     Route::get('admin/customers/billing-history', [AdminSubscriptionController::class, 'allBillingHistory']);
 });
+
+
 //ADMIN PLAN AND SUBSCRIPTION.
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/adminplan', [AdminPlanController::class, 'index']);
