@@ -97,7 +97,7 @@ class ReviewController extends Controller
                 'replies' => $hasReply ? [[
                     'reply_id' => $review->review_reply_id,
                     'reply_text' => $review->review_reply_text,
-                    'reply_created_time' => $review->updated_at->format('Y-m-d H:i:s'),
+                    'created_time' => Carbon::parse($review->replied_at)->format('Y-m-d H:i:s'),
                     'reply_type' => $review->ai_agent_id ? 'ai_reply' : 'manual_reply',
                 ]] : [],
             ];
