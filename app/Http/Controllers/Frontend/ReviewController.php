@@ -174,7 +174,7 @@ class ReviewController extends Controller
             'reply_id' => 'required|string',
         ]);
 
-         GetReview::where('provider', $request->provider)
+        GetReview::where('provider', $request->provider)
             ->where('page_id', $request->page_id)
             ->where('review_reply_id', $request->reply_id)
             ->update([

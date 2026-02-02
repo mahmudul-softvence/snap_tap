@@ -38,7 +38,11 @@ Route::middleware('guest:sanctum')->group(function () {
     Route::controller(RegisterController::class)->group(function () {
         Route::post('register', 'register');
         Route::post('login', 'login');
+        Route::get('auth/verify_email/{id}/{hash}', 'verify_email')
+            ->middleware('signed')->name('verification.verify');
+        Route::post('auth/resend_verification', 'resend_verification');
     });
+
     Route::post('/2fa/login', [TwoFactorController::class, 'loginVerify']);
 
     Route::get('change_review_status/{id}', [ReviewReqController::class, 'change_review_status']);
@@ -196,7 +200,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/notifications', [NotificationController::class, 'index']);
     Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
     Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
-
 });
 
 
