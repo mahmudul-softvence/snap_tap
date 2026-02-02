@@ -105,7 +105,7 @@ class AppServiceProvider extends ServiceProvider
 
         // -----------------------------
         // CHATGPT
-        Config::set('openai.api_key', Setting::get('chatgpt_api_key', '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'));
+        Config::set('openai.api_key', Setting::get('chatgpt_api_key', env('OPENAI_API_KEY')));
 
 
         //CUSTOM MODELS
