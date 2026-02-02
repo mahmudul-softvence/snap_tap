@@ -9,6 +9,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Mail;
 use App\Models\Review;
+use App\Models\Setting;
 use Exception;
 use Illuminate\Support\Facades\Log;
 use Twilio\Rest\Client;
@@ -74,9 +75,9 @@ class SendReviewMessageJob implements ShouldQueue
 
         if ($this->sendSms && $review->phone) {
             try {
-                $account_sid   = getenv("TWILIO_SID");
-                $auth_token    = getenv("TWILIO_TOKEN");
-                $twilio_number = getenv("TWILIO_FROM");
+                $account_sid   = Setting::get('twilio_sid');
+                $auth_token    = Setting::get('twilio_auth_token');
+                $twilio_number = Setting::get('twilio_from_number');
 
                 $client = new Client($account_sid, $auth_token);
 

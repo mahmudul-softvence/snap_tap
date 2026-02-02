@@ -48,7 +48,7 @@ class FacebookAvatarService
                 }
             }
 
-            return 'http://192.168.7.191:8000/' . $fileName;
+            return asset($fileName);
         } catch (\Exception $e) {
             Log::error('FacebookAvatarService: Failed to save avatar - ' . $e->getMessage());
             return null;
