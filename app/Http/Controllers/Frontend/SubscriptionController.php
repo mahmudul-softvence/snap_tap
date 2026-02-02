@@ -11,6 +11,7 @@ use Stripe\Stripe;
 use Stripe\SetupIntent;
 use Stripe\PaymentIntent;
 use Stripe\Exception\ApiErrorException;
+use App\Notifications\CustomerPlanCancelledNotification;
 use App\Notifications\CustomerPlanUpgradedNotification;
 use App\Models\User;
 use App\Models\Setting;
@@ -509,7 +510,18 @@ class SubscriptionController extends Controller
                 ], 400);
             }
 
+
             $subscription = $user->subscription('default')->cancel();
+            $oldPlan = $subscription->getPlan();
+
+            $notifyEnabled = Setting::where('key', 'customer_subs_cancel_n')
+                ->where('value', '1')
+                ->exists();
+
+            if ($notifyEnabled) {
+                $superAdmin = User::role('super_admin')->first();
+                $superAdmin->notify(new CustomerPlanCancelledNotification($user, $oldPlan));
+            }
 
             return response()->json([
                 'success' => true,
