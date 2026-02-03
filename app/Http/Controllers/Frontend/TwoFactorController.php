@@ -167,6 +167,7 @@ class TwoFactorController extends Controller
                 'token' => $user->createToken('auth')->plainTextToken,
                 'name'  => $user->name,
                 'email' => $user->email,
+                'roles' => $user->getRoleNames(),
             ],
         ], 200);
     }

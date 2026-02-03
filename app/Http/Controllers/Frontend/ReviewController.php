@@ -101,7 +101,7 @@ class ReviewController extends Controller
                     'reply_type' => $review->ai_agent_id ? 'ai_reply' : 'manual_reply',
                 ]] : [],
             ];
-        });
+        });   
 
         return response()->json($reviews);
     }

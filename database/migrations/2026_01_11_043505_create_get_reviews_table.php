@@ -21,7 +21,7 @@ return new class extends Migration
             $table->longText('review_text')->nullable();
             $table->enum('status', ['pending', 'replied', 'ai_replied'])->default('pending');
             $table->foreignId('ai_agent_id')->nullable()->constrained('ai_agents')->nullOnDelete();
-            $table->string('reviewed_at');
+            $table->string('reviewed_at')->nullable();
             $table->string('review_reply_id')->nullable();
             $table->text('review_reply_text')->nullable();
             $table->string('replied_at')->nullable();

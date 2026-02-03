@@ -115,6 +115,7 @@ class RegisterController extends Controller
             'data' => [
                 'token' => $token,
                 'name'  => $user->name,
+                'roles' => $user->getRoleNames(),
             ],
         ], 200);
     }

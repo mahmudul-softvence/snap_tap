@@ -18,6 +18,7 @@
         "lucianotonet/groq-laravel": "^1.0",
         "openai-php/client": "^0.18.0",
         "openai-php/laravel": "^0.18.0",
+        "pragmarx/google2fa": "^9.0",
         "propaganistas/laravel-disposable-email": "*",
         "simplesoftwareio/simple-qrcode": "^4.2",
         "spatie/laravel-permission": "^6.24",
