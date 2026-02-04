@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\BasicSetting;
 use App\Models\Setting;
 use App\Models\User;
+use App\Notifications\NewUserRegisteredNotification;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -26,7 +27,7 @@ class RegisterController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'name' => 'required',
-            'email' =>  'required|email|unique:users,email',
+            'email' =>  'required|email|indisposable|unique:users,email',
             'password' => 'required',
             'c_password' => 'required|same:password',
         ]);
@@ -52,18 +53,14 @@ class RegisterController extends Controller
 
         if ($notifyEnabled) {
             $superAdmin = User::role('super_admin')->first();
-            $superAdmin->notify(new \App\Notifications\NewUserRegisteredNotification($user));
+            $superAdmin->notify(new NewUserRegisteredNotification($user));
         }
 
-        $token = $user->createToken('MyApp')->plainTextToken;
+        $user->sendEmailVerificationNotification();
 
         return response()->json([
             'success' => true,
-            'message' => 'User registered successfully.',
-            'data' => [
-                'token' => $token,
-                'name'  => $user->name,
-            ],
+            'message' => 'A verification link has been sent to your email. Please verify your email to complete the registration.',
         ], 201);
     }
 
@@ -77,16 +74,26 @@ class RegisterController extends Controller
     {
         $credentials = $request->only('email', 'password');
 
-        if (! Auth::attempt($credentials)) {
+        if (!Auth::validate($credentials)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Unauthorised.',
-                'errors' => [
-                    'error' => 'Invalid email or password',
-                ],
+                'message' => 'Invalid email or password.',
             ], 401);
         }
 
+        $user = User::where('email', $credentials['email'])->first();
+
+        if (! $user->hasVerifiedEmail()) {
+            $user->sendEmailVerificationNotification();
+
+            return response()->json([
+                'success' => false,
+                'verified' => false,
+                'message' => 'Please verify your email. We sent a verification email again.',
+            ], 403);
+        }
+
+        Auth::attempt($credentials);
         $user = Auth::user();
 
         if ($user->two_factor_enabled) {
@@ -168,5 +175,58 @@ class RegisterController extends Controller
             'success' => true,
             'message' => 'Password changed successfully.',
         ], 200);
+    }
+
+
+    /**
+     * Verify user's email.
+     *
+     * @param  int  $id, $hash
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+
+    public function verify_email($id, $hash, Request $request)
+    {
+        $user = User::find($id);
+
+        if (!$user) {
+            return response()->json(['message' => 'User not found.'], 404);
+        }
+
+        if (!hash_equals((string) $hash, sha1($user->getEmailForVerification()))) {
+            return response()->json(['message' => 'Invalid verification link.'], 403);
+        }
+
+        if (!$user->hasVerifiedEmail()) {
+            $user->markEmailAsVerified();
+        }
+
+        return view('frontend.auth.email_verified');
+    }
+
+
+
+    /**
+     * Resend email verification link.
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+
+    public function resend_verification(Request $request)
+    {
+        $user = User::where('email', $request->email)->first();
+
+        if (!$user) {
+            return response()->json(['message' => 'User not found.'], 404);
+        }
+
+        if ($user->hasVerifiedEmail()) {
+            return response()->json(['message' => 'Email already verified.'], 400);
+        }
+
+        $user->sendEmailVerificationNotification();
+
+        return response()->json(['success' => true, 'message' => 'Verification link resent!']);
     }
 }

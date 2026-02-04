@@ -10,6 +10,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
+use App\Jobs\ReviewReplyJob;
+use App\Jobs\ReviewReplyDeleteJob;
+use OpenAI\Laravel\Facades\OpenAI;
+
+
 
 class ReviewController extends Controller
 {
@@ -20,7 +25,7 @@ class ReviewController extends Controller
         $status    = strtolower($request->query('status', ''));       // replied / pending
         $search    = strtolower($request->query('search', ''));
         $sort      = strtolower($request->query('sort', 'latest'));   // latest / oldest / az
-        $limit     = intval($request->query('limit', 10));
+        $limit     = intval($request->query('per_page', 10));
         $replyType = $request->query('reply_type');                    // ai_reply / manual_reply
 
         $query = GetReview::where('user_id', auth()->id());
@@ -63,14 +68,9 @@ class ReviewController extends Controller
                 break;
         }
 
-        // if ($limit > 0) {
-        //     $query->limit($limit);
-        // }
+        $reviews = $query->paginate($limit);
 
-        // $reviews = $query->get();
-        $reviews = $query->paginate($limit); 
-
-        $formatted = $reviews->map(function ($review) {
+        $reviews->getCollection()->transform(function ($review) {
 
             $hasReply = !empty($review->review_reply_text);
 
@@ -84,6 +84,7 @@ class ReviewController extends Controller
                 'recommendation_type' => $review->rating >= 4 ? 'positive' : 'negative',
 
                 'reviewer_name' => $review->reviewer_name,
+
                 'reviewer_avatar' => $review->reviewer_image
                     ?? 'https://ui-avatars.com/api/?name=' . urlencode($review->reviewer_name),
 
@@ -102,12 +103,9 @@ class ReviewController extends Controller
             ];
         });
 
-        return response()->json([
-            'success' => true,
-            'total' => $formatted->count(),
-            'reviews' => $formatted->values(),
-        ]);
+        return response()->json($reviews);
     }
+
 
     public function reply(Request $request)
     {
@@ -127,124 +125,49 @@ class ReviewController extends Controller
 
         $status = $replyType === 'ai_reply' ? 'ai_replied' : 'replied';
 
-        if ($provider === 'facebook') {
 
-            $page = UserBusinessAccount::where('user_id', auth()->id())
-                ->where('provider', 'facebook')
-                ->where('provider_account_id', $pageId)
-                ->where('status', 'connected')
-                ->firstOrFail();
+        UserBusinessAccount::where('user_id', auth()->id())
+            ->where('provider', $provider)
+            ->where('provider_account_id', $pageId)
+            ->where('status', 'connected')
+            ->firstOrFail();
 
-            $review = GetReview::where('provider', 'facebook')
-                ->where('provider_review_id', $reviewId)
-                ->where('page_id', $pageId)
-                ->firstOrFail();
+        GetReview::where('provider', $provider)
+            ->where('provider_review_id', $reviewId)
+            ->where('page_id', $pageId)
+            ->firstOrFail();
 
-            try {
 
-                if (!empty($review->review_reply_id)) {
-                    Http::withToken($page->access_token)
-                        ->delete("https://graph.facebook.com/v24.0/{$review->review_reply_id}");
-                }
 
-                $response = Http::withToken($page->access_token)
-                    ->post("https://graph.facebook.com/v24.0/{$reviewId}/comments", [
-                        'message' => $comment,
-                    ]);
-
-                $response->throw();
-            } catch (\Illuminate\Http\Client\RequestException $e) {
-
-                $error = $e->response->json() ?? [];
-
-                if (
-                    isset($error['error']['code'], $error['error']['error_subcode']) &&
-                    $error['error']['code'] == 100 &&
-                    $error['error']['error_subcode'] == 33
-                ) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'This review has already been removed from Facebook',
-                    ], 400);
-                }
-
-                if (isset($error['error']['code']) && $error['error']['code'] == 190) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Facebook access token expired. Please reconnect your page.',
-                    ], 400);
-                }
-
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Facebook reply failed',
-                    'error'   => $error,
-                ], 400);
-            }
-
-            $newReplyId = $response->json('id');
-
-            $review->update([
-                'review_reply_id'   => $newReplyId,
+        GetReview::where('provider', $provider)
+            ->where('provider_review_id', $reviewId)
+            ->where('page_id', $pageId)
+            ->update([
+                'status'            => 'replied',
                 'review_reply_text' => $comment,
-                'replied_at'        => now(),
-                'status'            => $replyType === 'ai_reply' ? 'ai_replied' : 'replied',
-                'ai_agent_id'       => $replyType === 'ai_reply' ? auth()->id() : null,
+                'replied_at'        => now()
             ]);
 
-            return response()->json([
-                'success'    => true,
-                'reply_id'   => $newReplyId,
-                'reply_text' => $comment,
-                'mode'       => 'replaced',
-            ]);
-        }
 
 
+        ReviewReplyJob::dispatch(
+            $provider,
+            $reviewId,
+            $pageId,
+            $comment,
+            $replyType,
+            auth()->id()
+        );
 
-        if ($provider === 'google') {
 
-            $account = UserBusinessAccount::where('user_id', auth()->id())
-                ->where('provider', 'google')
-                ->where('provider_account_id', $pageId)
-                ->where('status', 'connected')
-                ->firstOrFail();
-
-            $response = Http::withToken($account->access_token)
-                ->put("https://mybusiness.googleapis.com/v4/{$reviewId}/reply", [
-                    'comment' => $comment,
-                ]);
-
-            if ($response->failed()) {
-                return response()->json([
-                    'success' => false,
-                    'google_response' => $response->json(),
-                ], 400);
-            }
-
-            GetReview::where('provider', 'google')
-                ->where('provider_review_id', $reviewId)
-                ->where('page_id', $pageId)
-                ->update([
-                    'review_reply_id'   => $reviewId,
-                    'review_reply_text' => $comment,
-                    'replied_at'        => now(),
-                    'status'            => $status,
-                    'ai_agent_id'       => $replyType === 'ai_reply' ? auth()->id() : null,
-                ]);
-
-            return response()->json([
-                'success'  => true,
-                'message'  => 'Google review replied & saved',
-                'reply_id' => $reviewId,
-            ]);
-        }
 
         return response()->json([
-            'success' => false,
-            'message' => 'Invalid provider',
-        ], 400);
+            'success' => true,
+            'message' => 'Reply is processing in background',
+            'status'  => 'queued'
+        ]);
     }
+
 
     public function deleteReply(Request $request)
     {
@@ -254,63 +177,10 @@ class ReviewController extends Controller
             'reply_id' => 'required|string',
         ]);
 
-        $provider = $request->provider;
-        $pageId   = $request->page_id;
-        $replyId  = $request->reply_id;
-
-        if ($provider === 'facebook') {
-            $page = UserBusinessAccount::where('user_id', auth()->id())
-                ->where('provider', 'facebook')
-                ->where('provider_account_id', $pageId)
-                ->where('status', 'connected')
-                ->firstOrFail();
-
-            try {
-                $response = Http::withToken($page->access_token)
-                    ->delete("https://graph.facebook.com/v17.0/{$replyId}");
-
-                $response->throw();
-            } catch (\Illuminate\Http\Client\RequestException $e) {
-                $error = $e->response->json() ?? [];
-
-                if (
-                    isset($error['error']['code'], $error['error']['error_subcode'])
-                    && $error['error']['code'] == 100
-                    && $error['error']['error_subcode'] == 33
-                ) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'This reply has already been removed from Facebook',
-                    ], 400);
-                }
-
-                if (isset($error['error']['code']) && $error['error']['code'] == 190) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Facebook access token expired. Please reconnect your page.',
-                        'error'   => $error,
-                    ], 400);
-                }
-
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Facebook reply deletion failed',
-                    'error' => $error,
-                ], 400);
-            }
-
-            ReviewReply::where([
-                'provider' => 'facebook',
-                'page_id'  => $pageId,
-                'reply_id' => $replyId,
-                'user_id'  => auth()->id(),
-            ])->delete();
-
-            GetReview::where([
-                'provider' => 'facebook',
-                'page_id'  => $pageId,
-                'review_reply_id' => $replyId,
-            ])->update([
+        GetReview::where('provider', $request->provider)
+            ->where('page_id', $request->page_id)
+            ->where('review_reply_id', $request->reply_id)
+            ->update([
                 'review_reply_id'   => null,
                 'review_reply_text' => null,
                 'replied_at'        => null,
@@ -318,186 +188,79 @@ class ReviewController extends Controller
                 'ai_agent_id'       => null,
             ]);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Facebook reply deleted successfully',
-            ]);
-        }
-
-        if ($provider === 'google') {
-            $account = UserBusinessAccount::where('user_id', auth()->id())
-                ->where('provider', 'google')
-                ->where('provider_account_id', $pageId)
-                ->where('status', 'connected')
-                ->firstOrFail();
-
-            try {
-                $response = Http::withToken($account->access_token)
-                    ->put("https://mybusiness.googleapis.com/v4/{$replyId}/reply", []);
-
-                $response->throw();
-            } catch (\Illuminate\Http\Client\RequestException $e) {
-                $error = $e->response->json() ?? [];
-
-                if (isset($error['error']['status']) && $error['error']['status'] === 'NOT_FOUND') {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'This reply has already been removed from Google',
-                    ], 400);
-                }
-
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Google reply deletion failed',
-                    'error' => $error,
-                ], 400);
-            }
-
-            ReviewReply::where([
-                'provider' => 'google',
-                'page_id'  => $pageId,
-                'reply_id' => $replyId,
-                'user_id'  => auth()->id(),
-            ])->delete();
-
-            GetReview::where([
-                'provider' => 'google',
-                'page_id'  => $pageId,
-                'review_reply_id' => $replyId,
-            ])->update([
-                'review_reply_id'   => null,
-                'review_reply_text' => null,
-                'replied_at'        => null,
-                'status'            => 'pending',
-                'ai_agent_id'       => null,
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Google reply deleted successfully',
-            ]);
-        }
+        ReviewReplyDeleteJob::dispatch(
+            $request->provider,
+            $request->page_id,
+            $request->reply_id,
+            auth()->id()
+        );
 
         return response()->json([
-            'success' => false,
-            'message' => 'Invalid provider',
-        ], 400);
+            'success' => true,
+            'message' => 'Delete request queued',
+        ]);
+    }
+
+
+    public function generate_ai_reply($id)
+    {
+
+        $review = GetReview::where('user_id', Auth::id())
+            ->where('provider_review_id', $id)
+            ->first();
+
+
+        if (!$review) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Review not found',
+            ], 404);
+        }
+
+        $genaratedReply = $this->generateReply($review->review_text);
+
+        return response()->json([
+            'success' => true,
+            'reply' => $genaratedReply,
+            'message' => 'AI reply generated',
+        ]);
     }
 
 
 
-    // public function reply(Request $request)
-    // {
-    //     $request->validate([
-    //         'provider'   => 'required|in:facebook,google',
-    //         'review_id'  => 'required|string',
-    //         'page_id'    => 'required|string',
-    //         'comment'    => 'required|string|max:4000',
-    //         'reply_type' => 'nullable|in:ai_reply,manual_reply',
-    //     ]);
+    protected function generateReply(string $reviewText): string
+    {
+        $response = OpenAI::chat()->create([
+            'model' => 'gpt-5.2',
+            'messages' => [
+                [
+                    'role' => 'system',
+                    'content' => "You are an AI assistant responsible for replying to user reviews.
+                        Read the review carefully and generate a polite, professional response that thanks the reviewer and acknowledges their feedback.
 
-    //     $provider  = $request->provider;
-    //     $reviewId  = $request->review_id;
-    //     $pageId    = $request->page_id;
-    //     $comment   = $request->comment;
-    //     $replyType = $request->reply_type ?? 'manual_reply';
+                        Rules:
+                        - Do NOT include any personal information.
+                        - Keep the response professional, respectful, and positive.
+                        - Do NOT add new topics or assumptions.
+                        - Match the language of the review exactly.
+                        - Keep the reply between 20 to 40 words.
+                        - Output ONLY the review reply."
+                ],
+                [
+                    'role' => 'user',
+                    'content' => "Review: {$reviewText}"
+                ],
+            ],
+        ]);
 
-    //     $status = $replyType === 'ai_reply' ? 'ai_replied' : 'replied';
+        if (isset($response['choices'][0]['message']['content'])) {
+            $replyText = $response['choices'][0]['message']['content'];
+        } else {
+            $replyText = 'Thank you for your review! We appreciate your feedback.';
+        }
 
-    //     if ($provider === 'facebook') {
-    //         // Fetch connected page
-    //         $page = UserBusinessAccount::where('user_id', auth()->id())
-    //             ->where('provider', 'facebook')
-    //             ->where('provider_account_id', $pageId)
-    //             ->where('status', 'connected')
-    //             ->firstOrFail();
-
-    //         // Check if a reply already exists
-    //         $existingReplyId = GetReview::where('provider', 'facebook')
-    //             ->where('provider_review_id', $reviewId)
-    //             ->where('page_id', $pageId)
-    //             ->value('review_reply_id');
-
-    //         // Determine URL for POST request
-    //         if ($existingReplyId) {
-    //             // Edit existing reply
-    //             $url = "https://graph.facebook.com/v24.0/{$existingReplyId}";
-    //         } else {
-    //             // Create new reply
-    //             $url = "https://graph.facebook.com/v24.0/{$reviewId}/comments";
-    //         }
-
-    //         // Send POST request to Facebook
-    //         try {
-    //             $response = Http::withToken($page->access_token)
-    //                 ->post($url, [
-    //                     'message' => $comment,
-    //                 ]);
-
-    //             $response->throw();
-    //         } catch (\Illuminate\Http\Client\RequestException $e) {
-    //             $error = $e->response->json() ?? [];
-
-    //             // Handle specific errors
-    //             if (
-    //                 isset($error['error']['code'], $error['error']['error_subcode'])
-    //                 && $error['error']['code'] == 100
-    //                 && $error['error']['error_subcode'] == 33
-    //             ) {
-    //                 return response()->json([
-    //                     'success' => false,
-    //                     'message' => 'This review has already been removed from Facebook',
-    //                 ], 400);
-    //             }
-
-    //             if (isset($error['error']['code']) && $error['error']['code'] == 190) {
-    //                 return response()->json([
-    //                     'success' => false,
-    //                     'message' => 'Facebook access token expired. Please reconnect your page.',
-    //                     'error' => $error,
-    //                 ], 400);
-    //             }
-
-    //             return response()->json([
-    //                 'success' => false,
-    //                 'message' => 'Reply failed',
-    //                 'error' => $error,
-    //             ], 400);
-    //         }
-
-    //         // Use existing reply ID or new ID from response
-    //         $fbReplyId = $existingReplyId ?? $response->json('id');
-
-    //         // Update database
-    //         GetReview::where('provider', 'facebook')
-    //             ->where('provider_review_id', $reviewId)
-    //             ->where('page_id', $pageId)
-    //             ->update([
-    //                 'review_reply_id'   => $fbReplyId,
-    //                 'review_reply_text' => $comment,
-    //                 'replied_at'        => now(),
-    //                 'status'            => $status,
-    //                 'ai_agent_id'       => $replyType === 'ai_reply' ? auth()->id() : null,
-    //             ]);
-
-    //         return response()->json([
-    //             'success'    => true,
-    //             'reply_text' => $comment,
-    //             'reply_id'   => $fbReplyId,
-    //         ]);
-    //     }
-
-    //     // Google reply logic (if you have it) can go here...
-    // }
-
-
-
-
-
-
-
-
-
+        return $replyText;
+    }
 
 
 

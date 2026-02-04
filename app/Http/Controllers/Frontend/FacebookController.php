@@ -14,8 +14,10 @@ use Illuminate\Support\Facades\Session;
 
 class FacebookController extends Controller
 {
-    public function authUrl()
+    public function authUrl(Request $request)
     {
+        $type = $request->type ?? 'web';
+
         $scope = [
             'pages_show_list',
             'pages_read_user_content',
@@ -29,6 +31,7 @@ class FacebookController extends Controller
             'response_type' => 'code',
             'scope'         => implode(',', $scope),
             'auth_type'     => 'rerequest',
+            'state'         => $type,
         ]);
 
         return response()->json([
@@ -36,9 +39,12 @@ class FacebookController extends Controller
             'url' => "https://www.facebook.com/v17.0/dialog/oauth?$query",
         ]);
     }
-    //new
+
+
     public function callback(Request $request)
     {
+        $type = $request->state ?? 'web';
+
         if (!$request->has('code')) {
             return response()->json([
                 'success' => false,
@@ -46,7 +52,6 @@ class FacebookController extends Controller
             ], 400);
         }
 
-        //Exchange code for short-lived user token
         $tokenResponse = Http::get('https://graph.facebook.com/v17.0/oauth/access_token', [
             'client_id'     => config('services.facebook.page_client_id'),
             'client_secret' => config('services.facebook.page_client_secret'),
@@ -63,7 +68,6 @@ class FacebookController extends Controller
 
         $shortLivedToken = $tokenResponse['access_token'];
 
-        //Convert short-lived token → long-lived token (valid ~60 days)
         $longLivedResponse = Http::get('https://graph.facebook.com/v17.0/oauth/access_token', [
             'grant_type' => 'fb_exchange_token',
             'client_id' => config('services.facebook.page_client_id'),
@@ -80,19 +84,26 @@ class FacebookController extends Controller
 
         $userLongLivedToken = $longLivedResponse['access_token'];
 
-        // Get all pages for user using long-lived token
         $pagesResponse = Http::withToken($userLongLivedToken)
             ->get('https://graph.facebook.com/v17.0/me/accounts')
             ->json();
 
         $pagesJson = urlencode(json_encode($pagesResponse['data']));
 
-        // Pass back to frontend
         $query = http_build_query([
             'user_id' => auth()->id(),
-            'access_token' => $userLongLivedToken, // long-lived
+            'access_token' => $userLongLivedToken,
             'pages' => $pagesJson,
         ]);
+
+        if ($type === 'app') {
+            return response()->json([
+                'success' => true,
+                'message' => 'Facebook connected',
+                'pages' => $pagesResponse['data'] ?? [],
+                'access_token' => $userLongLivedToken,
+            ]);
+        }
 
         return redirect(config('app.frontend_url') . "/facebook/callback?$query");
     }
@@ -150,7 +161,6 @@ class FacebookController extends Controller
             ->where('provider', 'facebook')
             ->first();
 
-        // Already connected with another page
         if ($existingAccount && $existingAccount->provider_account_id !== $request->page_id) {
             return response()->json([
                 'success' => false,
@@ -185,7 +195,7 @@ class FacebookController extends Controller
         ]);
     }
 
-    //new
+
     public function pages()
     {
         $accounts = UserBusinessAccount::where('user_id', auth()->id())
@@ -210,10 +220,10 @@ class FacebookController extends Controller
 
                 $data = $response->json()['data'] ?? [];
 
-                // Token validity flag
+
                 $account->is_token_valid = $data['is_valid'] ?? false;
 
-                // Expiry date
+                
                 $account->token_expires_at_live = isset($data['expires_at'])
                     ? \Carbon\Carbon::createFromTimestamp($data['expires_at'])
                     : null;
@@ -230,33 +240,6 @@ class FacebookController extends Controller
             'pages' => $accounts,
         ]);
     }
-
-    //old
-    // public function pages()
-    // {
-    //     $accounts = UserBusinessAccount::where('user_id', auth()->id())
-    //         ->where('provider', 'facebook')
-    //         ->where('status', 'connected')
-    //         ->get();
-
-    //     if ($accounts->isEmpty()) {
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'No Facebook page connected',
-    //             'pages'   => []
-    //         ], 404);
-    //     }
-
-    //     return response()->json([
-    //         'success' => true,
-    //         'pages' => $accounts,
-    //     ]);
-    // }
-
-
-
-
-
 
 
     public function reviews()
