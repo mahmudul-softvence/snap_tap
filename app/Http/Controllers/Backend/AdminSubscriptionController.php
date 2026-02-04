@@ -18,6 +18,7 @@ class AdminSubscriptionController extends Controller
     public function adminDashboard(Request $request): JsonResponse
     {
         try {
+                
             $now = Carbon::now();
             $total_user = User::count();
 
