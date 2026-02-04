@@ -34,7 +34,6 @@ use App\Http\Controllers\Backend\UserProfileManageController;
     });
 
 
-
     //user profile details
     Route::middleware('role:super_admin','auth:sanctum')->group(function () {
         Route::get('/admin/user-profile-show/{id}', [UserProfileManageController::class, 'userDetailsShow']);
