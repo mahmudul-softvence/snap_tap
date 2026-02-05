@@ -35,7 +35,7 @@ class ImageUpload
         $fileName = time() . '_' . Str::random(10) . '.' . $image->getClientOriginalExtension();
         $image->move($path, $fileName);
 
-        return "uploads/$folder/$fileName";
+        return asset("uploads/$folder/$fileName");
     }
 }
 
