@@ -27,7 +27,7 @@ class RegisterController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'name' => 'required',
-            'email' =>  'required|email|indisposable|unique:users,email',
+            'email' =>  'required|email|unique:users,email',
             'password' => 'required',
             'c_password' => 'required|same:password',
         ]);
@@ -115,7 +115,7 @@ class RegisterController extends Controller
             'data' => [
                 'token' => $token,
                 'name'  => $user->name,
-                'roles' => $user->getRoleNames(),
+                'role' => $user->getRoleNames(),
             ],
         ], 200);
     }
@@ -203,7 +203,7 @@ class RegisterController extends Controller
             $user->markEmailAsVerified();
         }
 
-        return view('frontend.auth.email_verified');
+        return view('frontend.email_verified');
     }
 
 
