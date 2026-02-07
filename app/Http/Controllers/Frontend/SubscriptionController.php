@@ -546,34 +546,66 @@ class SubscriptionController extends Controller
         try {
             $user = $request->user();
 
+            $perPage   = (int) $request->get('per_page', 10);
+            $search    = $request->get('search'); 
+            $sortBy    = $request->get('sort_by', 'created_at');
+            $sortOrder = strtolower($request->get('sort_order', 'desc')) === 'asc'  ? 'asc' : 'desc';
+
+            $allowedSorts = ['created_at', 'ends_at'];
+            if (! in_array($sortBy, $allowedSorts, true)) {
+                $sortBy = 'created_at';
+            }
+
             $subscriptions = $user->subscriptions()
-                ->orderByDesc('created_at')
-                ->paginate(
-                    $request->get('per_page', 10)
-                );
+                ->with('items')
+                ->when($search, function ($query) use ($search) {
+                    $query->whereHas('items', function ($itemQuery) use ($search) {
+                        $itemQuery->whereIn(
+                            'stripe_price',
+                            Plan::where('name', 'LIKE', "%{$search}%")
+                                ->pluck('stripe_price_id')
+                        );
+                    });
+                })
+                ->orderBy($sortBy, $sortOrder)
+                ->paginate($perPage)
+                ->withQueryString();
+
+            $data = $subscriptions->through(function ($subscription) {
+                $item = $subscription->items->first();
+
+                $plan = $item ? Plan::where('stripe_price_id', $item->stripe_price)->first() : null;
+
+                return [
+                    'plan_id'       => $plan?->id,
+                    'plan_name'       => $plan?->name,
+                    'amount'          => $plan?->price,
+                    'start_date'      => $subscription->created_at,
+                    'end_date'        => $subscription->ends_at,
+                ];
+            });
 
             return response()->json([
                 'success' => true,
-                'message' => 'Subscriptions fetched successfully',
-                'data' => $subscriptions->through(function ($subscription) {
-                    $plan = Plan::where('stripe_price_id', $subscription->stripe_price)->first();
-
-                    return [
-                        'id' => $subscription->id,
-                        'plan_name' => $plan?->name,
-                        'amount' => $plan->price,
-                        'start_date' => $subscription->created_at,
-                        'end_date' => $subscription->ends_at,
-                    ];
-                }),
+                'message' => 'Billing history fetched successfully',
+                'data'    => $data,
+                'meta'    => [
+                    'current_page' => $subscriptions->currentPage(),
+                    'per_page'     => $subscriptions->perPage(),
+                    'total'        => $subscriptions->total(),
+                    'last_page'    => $subscriptions->lastPage(),
+                ],
             ]);
 
         } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Unable to fetch billing history',
-                'error' => $e->getMessage(),
+                'error'   => app()->environment('production')
+                    ? 'Internal server error'
+                    : $e->getMessage(),
             ], 500);
         }
     }
+
 }
