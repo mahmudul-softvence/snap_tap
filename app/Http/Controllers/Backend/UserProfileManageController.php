@@ -53,7 +53,7 @@ class UserProfileManageController extends Controller
         $validator = Validator::make($request->all(), [
             'name'      => 'required|string|max:255',
             'phone'     => 'nullable|string|max:50',
-            'email'     => 'required|email|unique:users,email,' . $user->id,
+            // 'email'     => 'required|email|unique:users,email,' . $user->id,
             'image'     => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
 
             'b_name'    => 'required_with:b_type,b_email,b_phone,b_website,b_address,b_logo|string|max:255',
@@ -81,7 +81,7 @@ class UserProfileManageController extends Controller
 
         $user->update([
             'name'  => $request->name,
-            'email' => $request->email,
+            // 'email' => $request->email,
             'phone' => $request->phone,
             'image' => $userImage,
         ]);

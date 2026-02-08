@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Http;
 
 class GmbController extends Controller
 {
-    //Google OAuth Authorization URL
+    //Google GMB OAuth Authorization URL
     public function authUrl()
     {
         $clientId    = Setting::get('google_client_id');
