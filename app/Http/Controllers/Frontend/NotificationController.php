@@ -23,6 +23,14 @@ class NotificationController extends Controller
                 'time' => $n->created_at->diffForHumans(),
             ]);
 
+        if ($notifications->isEmpty()) {
+            return response()->json([
+                'message' => 'No notifications found',
+                'unread_count' => 0,
+                'notifications' => [],
+            ]);
+        }
+
         return response()->json([
             'unread_count' => $user->unreadNotifications()->count(),
             'notifications' => $notifications,
@@ -45,11 +53,20 @@ class NotificationController extends Controller
                 'time' => $n->created_at->diffForHumans(),
             ]);
 
+        if ($notifications->isEmpty()) {
+            return response()->json([
+                'message' => 'No notifications found',
+                'unread_count' => 0,
+                'notifications' => [],
+            ]);
+        }
+
         return response()->json([
             'unread_count' => $user->unreadNotifications()->count(),
             'notifications' => $notifications,
         ]);
     }
+
 
 
 
