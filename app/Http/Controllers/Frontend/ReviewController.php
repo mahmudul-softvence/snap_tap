@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use App\Jobs\ReviewReplyJob;
 use App\Jobs\ReviewReplyDeleteJob;
+use LucianoTonet\GroqLaravel\Facades\Groq;
 use OpenAI\Laravel\Facades\OpenAI;
 
 
@@ -230,36 +231,29 @@ class ReviewController extends Controller
 
     protected function generateReply(string $reviewText): string
     {
-        $response = OpenAI::chat()->create([
-            'model' => 'gpt-5.2',
-            'messages' => [
-                [
-                    'role' => 'system',
-                    'content' => "You are an AI assistant responsible for replying to user reviews.
-                        Read the review carefully and generate a polite, professional response that thanks the reviewer and acknowledges their feedback.
-
-                        Rules:
-                        - Do NOT include any personal information.
-                        - Keep the response professional, respectful, and positive.
-                        - Do NOT add new topics or assumptions.
-                        - Match the language of the review exactly.
-                        - Keep the reply between 20 to 40 words.
-                        - Output ONLY the review reply."
+        try {
+            $response = Groq::chat()->completions()->create([
+                'model' => 'llama-3.3-70b-versatile',
+                'messages' => [
+                    [
+                        'role' => 'system',
+                        'content' => "You are an AI assistant responsible for replying to user reviews.
+                        Keep the response professional, match the language of the review,
+                        and output ONLY the review reply between 20-40 words."
+                    ],
+                    [
+                        'role' => 'user',
+                        'content' => "Review: {$reviewText}"
+                    ],
                 ],
-                [
-                    'role' => 'user',
-                    'content' => "Review: {$reviewText}"
-                ],
-            ],
-        ]);
+            ]);
 
-        if (isset($response['choices'][0]['message']['content'])) {
-            $replyText = $response['choices'][0]['message']['content'];
-        } else {
-            $replyText = 'Thank you for your review! We appreciate your feedback.';
+            $replyText = $response['choices'][0]['message']['content'] ?? 'Thank you for your review! We appreciate your feedback.';
+
+            return trim($replyText);
+        } catch (\Exception $e) {
+            return 'Thank you for your review! We appreciate your feedback.';
         }
-
-        return $replyText;
     }
 
 

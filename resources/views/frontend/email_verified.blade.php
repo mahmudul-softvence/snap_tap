@@ -22,9 +22,6 @@
                     You can now log in to your account.
                 </p>
 
-                <a href="#" class="btn btn-primary w-100">
-                    Login
-                </a>
             </div>
         </div>
     </div>
