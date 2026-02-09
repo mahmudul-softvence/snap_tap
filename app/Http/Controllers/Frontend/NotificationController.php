@@ -16,11 +16,8 @@ class NotificationController extends Controller
             ->paginate(20)
             ->through(fn($n) => [
                 'id' => $n->id,
-                'title' => $n->data['title'] ?? '',
-                'body' => $n->data['body']
-                    ?? $n->data['message']
-                    ?? $n->data['text']
-                    ?? '',
+                'type' => $n->type,
+                'data' => $n->data,
                 'is_read' => $n->read_at != null,
                 'read_at' => $n->read_at,
                 'time' => $n->created_at->diffForHumans(),
@@ -39,13 +36,10 @@ class NotificationController extends Controller
         $notifications = $user->notifications()
             ->latest()
             ->get()
-            ->through(fn($n) => [
+            ->map(fn($n) => [
                 'id' => $n->id,
-                'title' => $n->data['title'] ?? '',
-                'body' => $n->data['body']
-                    ?? $n->data['message']
-                    ?? $n->data['text']
-                    ?? '',
+                'type' => $n->type,
+                'data' => $n->data,
                 'is_read' => $n->read_at != null,
                 'read_at' => $n->read_at,
                 'time' => $n->created_at->diffForHumans(),
@@ -56,6 +50,7 @@ class NotificationController extends Controller
             'notifications' => $notifications,
         ]);
     }
+
 
 
     // public function index(Request $request)
