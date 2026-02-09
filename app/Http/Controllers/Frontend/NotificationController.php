@@ -11,13 +11,59 @@ class NotificationController extends Controller
     {
         $user = $request->user();
 
+        $notifications = $user->notifications()
+            ->latest()
+            ->paginate(20)
+            ->through(fn($n) => [
+                'id' => $n->id,
+                'type' => $n->type,
+                'data' => $n->data,
+                'is_read' => $n->read_at != null,
+                'read_at' => $n->read_at,
+                'time' => $n->created_at->diffForHumans(),
+            ]);
+
         return response()->json([
             'unread_count' => $user->unreadNotifications()->count(),
-            'notifications' => $user->notifications()
-                ->latest()
-                ->paginate(20),
+            'notifications' => $notifications,
         ]);
     }
+
+    public function viewAll(Request $request)
+    {
+        $user = $request->user();
+
+        $notifications = $user->notifications()
+            ->latest()
+            ->get()
+            ->map(fn($n) => [
+                'id' => $n->id,
+                'type' => $n->type,
+                'data' => $n->data,
+                'is_read' => $n->read_at != null,
+                'read_at' => $n->read_at,
+                'time' => $n->created_at->diffForHumans(),
+            ]);
+
+        return response()->json([
+            'unread_count' => $user->unreadNotifications()->count(),
+            'notifications' => $notifications,
+        ]);
+    }
+
+
+
+    // public function index(Request $request)
+    // {
+    //     $user = $request->user();
+
+    //     return response()->json([
+    //         'unread_count' => $user->unreadNotifications()->count(),
+    //         'notifications' => $user->notifications()
+    //             ->latest()
+    //             ->paginate(20),
+    //     ]);
+    // }
 
     //Mark single notification as read
     public function markAsRead(Request $request, $id)

@@ -58,7 +58,10 @@ class SocialiteController extends Controller
 
             $user->assignRole('user');
 
+            $user->basicSetting()->create();
+
             event(new Registered($user));
+
         }
 
         $user->forceFill([
@@ -67,7 +70,6 @@ class SocialiteController extends Controller
         ])->save();
 
 
-        $user->basicSetting()->create();
 
         $token = $user->createToken('social-login')->plainTextToken;
 
