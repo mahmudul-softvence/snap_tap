@@ -57,6 +57,8 @@ class ReplyToReviewJob implements ShouldQueue
             'status' => 'ai_replied',
             'reply_text' => $replyText,
         ]);
+
+        
     }
 
     protected function generateReply(string $reviewText, string $aiAgentContent = ''): string
