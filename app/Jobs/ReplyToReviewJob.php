@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\GetReview;
 use App\Models\AiAgent;
+use App\Models\BasicSetting;
 use App\Models\UserBusinessAccount;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -58,7 +59,15 @@ class ReplyToReviewJob implements ShouldQueue
             'reply_text' => $replyText,
         ]);
 
-        
+        //notification
+        $notifyEnabled = BasicSetting::where('user_id', $this->review->user_id)
+                            ->where('ai_reply', 1)
+                            ->exists();
+        if ($notifyEnabled) {
+            $this->review->user->notify(new \App\Notifications\AiReviewRepliedNotification($this->review));
+        }
+
+
     }
 
     protected function generateReply(string $reviewText, string $aiAgentContent = ''): string
