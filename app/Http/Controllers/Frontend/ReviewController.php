@@ -102,7 +102,7 @@ class ReviewController extends Controller
                     'reply_type' => $review->ai_agent_id ? 'ai_reply' : 'manual_reply',
                 ]] : [],
             ];
-        });   
+        });
 
         return response()->json($reviews);
     }
@@ -229,26 +229,29 @@ class ReviewController extends Controller
 
 
 
-    protected function generateReply(string $reviewText): string
+    protected function generateReply(string $reviewText, string $aiAgentContent = ''): string
     {
         try {
             $response = Groq::chat()->completions()->create([
                 'model' => 'llama-3.3-70b-versatile',
                 'messages' => [
                     [
-                        'role' => 'system',
-                        'content' => "You are an AI assistant responsible for replying to user reviews.
-                        Keep the response professional, match the language of the review,
-                        and output ONLY the review reply between 20-40 words."
-                    ],
-                    [
                         'role' => 'user',
-                        'content' => "Review: {$reviewText}"
+                        'content' => "Instructions: {$aiAgentContent}
+                        Review: {$reviewText}
+
+                        Note:
+                        - Do NOT include any personal information such as names, addresses, emails, or phone numbers.
+                        - Only generate polite, professional feedback based on the review.
+                        - Make sure the reply is in the SAME language as the review.
+                        - Keep the reply between 20 to 40 words.
+                        - Output ONLY the reply."
                     ],
                 ],
             ]);
 
-            $replyText = $response['choices'][0]['message']['content'] ?? 'Thank you for your review! We appreciate your feedback.';
+            $replyText = $response['choices'][0]['message']['content']
+                ?? 'Thank you for your review! We appreciate your feedback.';
 
             return trim($replyText);
         } catch (\Exception $e) {
