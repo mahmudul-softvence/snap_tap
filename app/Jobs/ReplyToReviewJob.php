@@ -61,12 +61,13 @@ class ReplyToReviewJob implements ShouldQueue
 
     protected function generateReply(string $reviewText, string $aiAgentContent = ''): string
     {
-        $response = OpenAI::chat()->create([
-            'model' => 'gpt-5.2',
-            'messages' => [
-                [
-                    'role' => 'user',
-                    'content' => "Instructions: {$aiAgentContent}
+        try {
+            $response = Groq::chat()->completions()->create([
+                'model' => 'llama-3.3-70b-versatile',
+                'messages' => [
+                    [
+                        'role' => 'user',
+                        'content' => "Instructions: {$aiAgentContent}
                         Review: {$reviewText}
 
                         Note:
@@ -75,16 +76,16 @@ class ReplyToReviewJob implements ShouldQueue
                         - Make sure the reply is in the SAME language as the review.
                         - Keep the reply between 20 to 40 words.
                         - Output ONLY the reply."
+                    ],
                 ],
-            ],
-        ]);
+            ]);
 
-        if (isset($response['choices'][0]['message']['content'])) {
-            $replyText = $response['choices'][0]['message']['content'];
-        } else {
-            $replyText = 'Thank you for your review! We appreciate your feedback.';
+            $replyText = $response['choices'][0]['message']['content']
+                ?? 'Thank you for your review! We appreciate your feedback.';
+
+            return trim($replyText);
+        } catch (\Exception $e) {
+            return 'Thank you for your review! We appreciate your feedback.';
         }
-
-        return $replyText;
     }
 }
