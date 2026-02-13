@@ -22,7 +22,7 @@ class CustomerPlanCancelledNotification extends Notification implements ShouldQu
         return ['database'];     
     }
     
-    public function toDatabase(): array
+    public function toDatabase($notifiable): array
     {
         return
         [

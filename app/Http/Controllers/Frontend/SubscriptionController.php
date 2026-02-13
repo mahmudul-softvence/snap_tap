@@ -15,6 +15,7 @@ use App\Notifications\CustomerPlanCancelledNotification;
 use App\Notifications\CustomerPlanUpgradedNotification;
 use App\Models\User;
 use App\Models\Setting;
+use Carbon\Carbon;
 
 class SubscriptionController extends Controller
 {
@@ -178,6 +179,10 @@ class SubscriptionController extends Controller
                         'payment_intent_id' => $paymentIntentId,
                     ],
                 ]);
+
+           $subscription->update([
+                'current_period_end' => $subscription->currentPeriodEnd(),
+            ]);
 
             if (! $autoRenew) {
                 $subscription->cancelAtPeriodEnd();
@@ -577,7 +582,7 @@ class SubscriptionController extends Controller
                 $plan = $item ? Plan::where('stripe_price_id', $item->stripe_price)->first() : null;
 
                 return [
-                    'plan_id'       => $plan?->id,
+                    'plan_id'         => $plan?->id,
                     'plan_name'       => $plan?->name,
                     'amount'          => $plan?->price,
                     'start_date'      => $subscription->created_at,

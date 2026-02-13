@@ -77,4 +77,14 @@ class Subscription extends CashierSubscription
         ]);
     }
 
+    public function plan()
+    {
+        return $this->belongsTo(
+            Plan::class,
+            'stripe_price',        
+            'stripe_price_id'     
+        );
+    }
+
+
 }
