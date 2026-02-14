@@ -17,8 +17,9 @@ return Application::configure(basePath: dirname(__DIR__))
         __DIR__ . '/../app/Console/Commands',
     ])
     ->withSchedule(function ($schedule) {
-        $schedule->command('subscriptions:send-renewal-reminders')
-            ->dailyAt('09:00');
+        $schedule->command('subscriptions:send-renewal-reminders')->everyMinute()->withoutOverlapping()
+        ->onOneServer();
+            // ->dailyAt('09:00')->withoutOverlapping()->onOneServer();
     })
     ->withProviders([
         EventServiceProvider::class,
