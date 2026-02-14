@@ -7,6 +7,13 @@ use Carbon\Carbon;
 
 class Subscription extends CashierSubscription
 {
+     protected $casts = [
+        'ends_at' => 'datetime',
+        'trial_ends_at' => 'datetime',
+        'quantity' => 'integer',
+        'current_period_end' => 'datetime',
+    ];
+
     public function renewOn(): ?Carbon
     {
         if ($this->onTrial() && $this->trial_ends_at) {

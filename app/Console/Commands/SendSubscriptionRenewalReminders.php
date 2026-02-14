@@ -16,16 +16,28 @@ class SendSubscriptionRenewalReminders extends Command
     {
         Log::info('Subscription renewal reminder command started.');
 
-        //$targetDate = now()->addDays(7)->toDateString();
-        $targetDate = now()->toDateString();
+        $startDate = now('UTC')->addDays(30)->startOfDay();
+        $endDate   = now('UTC')->addDays(30)->endOfDay();
 
         Subscription::query()
-            ->whereDate('ends_at', $targetDate)
-            ->whereIn('stripe_status', ['active', 'trialing', 'past_due'])
+            ->where(function ($query) use ($startDate, $endDate) {
+
+                $query->where(function ($q) use ($startDate, $endDate) {
+                    $q->where('stripe_status', 'active')
+                    ->whereBetween('current_period_end', [$startDate, $endDate]);
+                })
+
+                ->orWhere(function ($q) use ($startDate, $endDate) {
+                    $q->where('stripe_status', 'trialing')
+                    ->whereNotNull('trial_ends_at')
+                    ->whereBetween('trial_ends_at', [$startDate, $endDate]);
+                });
+
+            })
             ->with(['user.basicSetting', 'plan'])
             ->chunkById(100, function ($subscriptions) {
 
-                Log::info('Found subscriptions: ' . $subscriptions->count());
+                Log::info('Chunk size: ' . $subscriptions->count());
 
                 foreach ($subscriptions as $subscription) {
 
@@ -35,7 +47,11 @@ class SendSubscriptionRenewalReminders extends Command
                         continue;
                     }
 
-                    if (!$user->basicSetting?->renewel_reminder) {
+                    if (!$user->basicSetting) {
+                        continue;
+                    }
+
+                    if (!$user->basicSetting->renewel_reminder) {
                         continue;
                     }
 

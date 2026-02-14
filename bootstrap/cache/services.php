@@ -39,7 +39,9 @@
     35 => 'Propaganistas\\LaravelDisposableEmail\\DisposableEmailServiceProvider',
     36 => 'SimpleSoftwareIO\\QrCode\\QrCodeServiceProvider',
     37 => 'Spatie\\Permission\\PermissionServiceProvider',
-    38 => 'App\\Providers\\AppServiceProvider',
+    38 => 'App\\Providers\\EventServiceProvider',
+    39 => 'App\\Providers\\AppServiceProvider',
+    40 => 'App\\Providers\\EventServiceProvider',
   ),
   'eager' => 
   array (
@@ -64,7 +66,9 @@
     18 => 'Propaganistas\\LaravelDisposableEmail\\DisposableEmailServiceProvider',
     19 => 'SimpleSoftwareIO\\QrCode\\QrCodeServiceProvider',
     20 => 'Spatie\\Permission\\PermissionServiceProvider',
-    21 => 'App\\Providers\\AppServiceProvider',
+    21 => 'App\\Providers\\EventServiceProvider',
+    22 => 'App\\Providers\\AppServiceProvider',
+    23 => 'App\\Providers\\EventServiceProvider',
   ),
   'deferred' => 
   array (

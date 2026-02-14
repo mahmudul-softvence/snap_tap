@@ -4,6 +4,7 @@ namespace App\Listeners;
 
 use Laravel\Cashier\Events\WebhookHandled;
 use App\Models\Subscription;
+use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 
 class SyncSubscriptionRenewalDate
@@ -12,29 +13,62 @@ class SyncSubscriptionRenewalDate
     {
         $payload = $event->payload;
 
-        if (! in_array($payload['type'], [
+        $eventType = $payload['type'] ?? null;
+
+        if (! $eventType) {
+            return;
+        }
+
+        if (! in_array($eventType, [
             'customer.subscription.created',
             'customer.subscription.updated',
+            'customer.subscription.deleted',
         ])) {
             return;
         }
 
-        $stripeSubscription = $payload['data']['object'];
+        $stripeSubscription = $payload['data']['object'] ?? null;
 
-        $subscription = Subscription::where(
+        if (! $stripeSubscription || empty($stripeSubscription['id'])) {
+           // Log::warning('Stripe webhook missing subscription object.');
+            return;
+        }
+
+        $localSubscription = Subscription::where(
             'stripe_id',
             $stripeSubscription['id']
         )->first();
 
-        if (! $subscription) {
+        if (! $localSubscription) {
+            Log::info('Subscription not found locally.', [
+                'stripe_id' => $stripeSubscription['id'],
+            ]);
             return;
         }
 
-        $subscription->update([
-            'current_period_end' => Carbon::createFromTimestamp(
-                $stripeSubscription['current_period_end']
-            ),
-            'stripe_status' => $stripeSubscription['status'],
+        $currentPeriodEnd = isset($stripeSubscription['current_period_end'])
+            ? Carbon::createFromTimestamp($stripeSubscription['current_period_end'])
+            : null;
+
+        $status = $stripeSubscription['status'] ?? null;
+
+        $needsUpdate =
+            $localSubscription->current_period_end != $currentPeriodEnd ||
+            $localSubscription->stripe_status !== $status;
+
+        if (! $needsUpdate) {
+            return;
+        }
+
+        $localSubscription->update([
+            'current_period_end' => $currentPeriodEnd,
+            'stripe_status'      => $status,
         ]);
+
+        // Log::info('Subscription synced from Stripe.', [
+        //     'stripe_id' => $stripeSubscription['id'],
+        //     'status' => $status,
+        //     'current_period_end' => $currentPeriodEnd,
+        // ]);
     }
 }

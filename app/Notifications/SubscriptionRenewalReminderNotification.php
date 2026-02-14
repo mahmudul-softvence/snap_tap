@@ -11,9 +11,13 @@ class SubscriptionRenewalReminderNotification extends Notification implements Sh
 {
     use Queueable;
 
+    protected string $renewalDate;
+
     public function __construct(
         protected Subscription $subscription
-    ) {}
+    ) {
+        $this->renewalDate = $this->resolveRenewalDate();
+    }
 
     public function via($notifiable): array
     {
@@ -30,11 +34,20 @@ class SubscriptionRenewalReminderNotification extends Notification implements Sh
             'message' => sprintf(
                 'Your %s plan will renew on %s.',
                 $plan?->name ?? 'subscription',
-                optional($this->subscription->ends_at)->toDateString()
+                $this->renewalDate
             ),
             'subscription_id' => $this->subscription->id,
             'plan_name' => $plan?->name,
-            'renewal_date' => optional($this->subscription->ends_at)->toDateString(),
+            'renewal_date' => $this->renewalDate,
         ];
+    }
+
+    protected function resolveRenewalDate(): string
+    {
+        if ($this->subscription->stripe_status === 'trialing') {
+            return optional($this->subscription->trial_ends_at)->toDateString();
+        }
+
+        return optional($this->subscription->current_period_end)->toDateString();
     }
 }

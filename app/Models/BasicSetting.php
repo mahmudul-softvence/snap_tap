@@ -30,9 +30,13 @@ class BasicSetting extends Model
         'multi_language_ai',
     ];
 
+     protected $casts = [
+        'renewel_reminder' => 'boolean',
+    ];
 
     public function user()
     {
         return $this->belongsTo(User::class);
     }
+   
 }
