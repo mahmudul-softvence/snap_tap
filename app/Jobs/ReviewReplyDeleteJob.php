@@ -79,8 +79,12 @@ class ReviewReplyDeleteJob implements ShouldQueue
 
             if (!$account) return;
 
+            // user for real data-----------------------------------------------
+            /*
             Http::withToken($account->access_token)
-                ->put("https://mybusiness.googleapis.com/v4/{$this->replyId}/reply", []);
+                ->delete("https://mybusiness.googleapis.com/v4/{$this->replyId}");
+            */
+            // ------------------------------------------------------------------
 
             ReviewReply::where([
                 'provider' => 'google',
@@ -100,6 +104,41 @@ class ReviewReplyDeleteJob implements ShouldQueue
                 'status'            => 'pending',
                 'ai_agent_id'       => null,
             ]);
+
+            \Log::info("Google Reply Deleted (Mock Mode) for Reply ID: {$this->replyId}");
         }
+
+        // if ($this->provider === 'google') {
+
+        //     $account = UserBusinessAccount::where('user_id', $this->userId)
+        //         ->where('provider', 'google')
+        //         ->where('provider_account_id', $this->pageId)
+        //         ->where('status', 'connected')
+        //         ->first();
+
+        //     if (!$account) return;
+
+        //     Http::withToken($account->access_token)
+        //         ->put("https://mybusiness.googleapis.com/v4/{$this->replyId}/reply", []);
+
+        //     ReviewReply::where([
+        //         'provider' => 'google',
+        //         'page_id'  => $this->pageId,
+        //         'reply_id' => $this->replyId,
+        //         'user_id'  => $this->userId,
+        //     ])->delete();
+
+        //     GetReview::where([
+        //         'provider' => 'google',
+        //         'page_id'  => $this->pageId,
+        //         'review_reply_id' => $this->replyId,
+        //     ])->update([
+        //         'review_reply_id'   => null,
+        //         'review_reply_text' => null,
+        //         'replied_at'        => null,
+        //         'status'            => 'pending',
+        //         'ai_agent_id'       => null,
+        //     ]);
+        // }
     }
 }

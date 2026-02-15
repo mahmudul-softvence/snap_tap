@@ -89,12 +89,14 @@ class ReviewReplyJob implements ShouldQueue
 
             if (!$account) return;
 
-            $response = Http::withToken($account->access_token)
-                ->put("https://mybusiness.googleapis.com/v4/{$this->reviewId}/reply", [
-                    'comment' => $this->comment,
-                ]);
+            ///use for real data---------------------------------------------------------------------
+            // $response = Http::withToken($account->access_token)
+            //     ->put("https://mybusiness.googleapis.com/v4/{$this->reviewId}/reply", [
+            //         'comment' => $this->comment,
+            //     ]);
 
-            if ($response->failed()) return;
+            // if ($response->failed()) return;
+            //------------------------------------------------------------------------------------------
 
             GetReview::where('provider', 'google')
                 ->where('provider_review_id', $this->reviewId)
@@ -106,6 +108,8 @@ class ReviewReplyJob implements ShouldQueue
                     'status'            => $status,
                     'ai_agent_id'       => $this->replyType === 'ai_reply' ? $this->userId : null,
                 ]);
+
+            \Log::info("Google Reply Mocked for Review: {$this->reviewId}");
         }
     }
 }

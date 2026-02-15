@@ -108,46 +108,6 @@ class FacebookController extends Controller
         return redirect(config('app.frontend_url') . "/facebook/callback?$query");
     }
 
-    //old
-    // public function callback(Request $request)
-    // {
-    //     if (!$request->has('code')) {
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'Authorization code missing',
-    //         ], 400);
-    //     }
-
-    //     $tokenResponse = Http::get('https://graph.facebook.com/v17.0/oauth/access_token', [
-    //         'client_id'     => config('services.facebook.page_client_id'),
-    //         'client_secret' => config('services.facebook.page_client_secret'),
-    //         'redirect_uri'  => config('services.facebook.page_redirect'),
-    //         'code'          => $request->code,
-    //     ])->json();
-
-    //     if (!isset($tokenResponse['access_token'])) {
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'Failed to retrieve access token',
-    //         ], 400);
-    //     }
-
-    //     $userAccessToken = $tokenResponse['access_token'];
-
-    //     $pagesResponse = Http::withToken($userAccessToken)
-    //         ->get('https://graph.facebook.com/v17.0/me/accounts')
-    //         ->json();
-
-    //     $pagesJson = urlencode(json_encode($pagesResponse['data']));
-
-    //     $query = http_build_query([
-    //         'user_id' => auth()->id(),
-    //         'access_token' => $userAccessToken,
-    //         'pages' => $pagesJson,
-    //     ]);
-
-    //     return redirect(config('app.frontend_url') . "/facebook/callback?$query");
-    // }
 
     public function connectPage(Request $request)
     {
@@ -223,7 +183,7 @@ class FacebookController extends Controller
 
                 $account->is_token_valid = $data['is_valid'] ?? false;
 
-                
+
                 $account->token_expires_at_live = isset($data['expires_at'])
                     ? \Carbon\Carbon::createFromTimestamp($data['expires_at'])
                     : null;

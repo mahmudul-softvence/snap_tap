@@ -37,3 +37,18 @@ Route::get('update/backups/{file}', [SystemUpdateController::class, 'downloadBac
 Route::post('update/run', [SystemUpdateController::class, 'run'])->name('admin.update.run');
 ///delete old backup
 Route::delete('update/backups/{file}', [SystemUpdateController::class, 'deleteBackup'])->name('admin.update.backup.delete');
+
+
+
+Route::get('/create-mock-google', function () {
+    \App\Models\UserBusinessAccount::updateOrCreate(
+        ['provider' => 'google', 'provider_account_id' => 'gmb_123456'],
+        [
+            'user_id' => 43,
+            'business_name' => 'My Test Google Business',
+            'access_token' => 'mock_token',
+            'status' => 'connected',
+        ]
+    );
+    return "Mock Google Account Created!";
+});
