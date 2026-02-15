@@ -228,7 +228,6 @@ class ReviewController extends Controller
     }
 
 
-
     protected function generateReply(string $reviewText, string $aiAgentContent = ''): string
     {
         try {
