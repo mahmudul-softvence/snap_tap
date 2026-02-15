@@ -189,11 +189,20 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/reviews/generate-ai-reply/{id}', [ReviewController::class, 'generate_ai_reply']);
 });
 
-
+//authenticator app
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/2fa/setup', [TwoFactorController::class, 'setup']);
     Route::post('/2fa/confirm', [TwoFactorController::class, 'confirm']);
     Route::post('/2fa/disable', [TwoFactorController::class, 'disable']);
+
+    //Email 2FA
+    Route::post('/2fa/email/send', [TwoFactorController::class, 'sendEmailCode']);
+});
+
+
+Route::middleware('auth:sanctum')->group(function () {
+    // Email 2FA
+    // Route::post('/2fa/email/verify', [TwoFactorController::class, 'verifyEmailCode']);
 });
 
 Route::middleware('auth:sanctum')->group(function () {
