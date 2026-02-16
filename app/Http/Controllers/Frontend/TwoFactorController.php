@@ -227,10 +227,10 @@ class TwoFactorController extends Controller
 
     public function sendEmailCode(Request $request)
     {
-        $user = $request->user();
+        $request->validate(['user_id' => 'required|exists:users,id']);
+        $user = User::findOrFail($request->user_id);
 
         $code = rand(100000, 999999);
-
         $user->two_factor_email_code = $code;
         $user->two_factor_email_expires_at = now()->addMinutes(10);
         $user->save();
@@ -238,6 +238,18 @@ class TwoFactorController extends Controller
         Mail::to($user->email)->send(new TwoFactorCodeMail($code));
 
         return response()->json(['message' => 'Email 2FA code has been sent.']);
+        
+        // $user = $request->user();
+
+        // $code = rand(100000, 999999);
+
+        // $user->two_factor_email_code = $code;
+        // $user->two_factor_email_expires_at = now()->addMinutes(10);
+        // $user->save();
+
+        // Mail::to($user->email)->send(new TwoFactorCodeMail($code));
+
+        // return response()->json(['message' => 'Email 2FA code has been sent.']);
     }
 
     // public function verifyEmailCode(Request $request)

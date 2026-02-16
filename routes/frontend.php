@@ -44,6 +44,8 @@ Route::middleware('guest:sanctum')->group(function () {
     });
 
     Route::post('/2fa/login', [TwoFactorController::class, 'loginVerify']);
+    //Email 2FA
+    Route::post('/2fa/email/send', [TwoFactorController::class, 'sendEmailCode']);
 
     Route::get('change_review_status/{id}', [ReviewReqController::class, 'change_review_status']);
 });
@@ -194,9 +196,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/2fa/setup', [TwoFactorController::class, 'setup']);
     Route::post('/2fa/confirm', [TwoFactorController::class, 'confirm']);
     Route::post('/2fa/disable', [TwoFactorController::class, 'disable']);
-
-    //Email 2FA
-    Route::post('/2fa/email/send', [TwoFactorController::class, 'sendEmailCode']);
 });
 
 
