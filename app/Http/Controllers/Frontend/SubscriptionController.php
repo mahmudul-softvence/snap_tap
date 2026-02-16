@@ -180,14 +180,8 @@ class SubscriptionController extends Controller
                     ],
                 ]);
 
-            $stripeSubscription = $user->subscription('default');
-
-            $subscription->update([
-                'current_period_end' => $stripeSubscription->asStripeSubscription()->current_period_end
-                    ? Carbon::createFromTimestamp(
-                        $stripeSubscription->asStripeSubscription()->current_period_end
-                    )
-                    : null,
+           $subscription->update([
+                'current_period_end' => $subscription->currentPeriodEnd(),
             ]);
 
             if (! $autoRenew) {
