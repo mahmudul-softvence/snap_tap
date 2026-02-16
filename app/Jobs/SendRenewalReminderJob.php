@@ -60,7 +60,7 @@ class SendRenewalReminderJob implements ShouldQueue
                     }
 
                     if (!$user->basicSetting?->renewel_reminder) {
-                        Log::info("Reminder disabled for user {$user->id}");
+                        Log::info("Reminder found for user {$user->id}");
                         continue;
                     }
 
