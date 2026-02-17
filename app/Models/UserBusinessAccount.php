@@ -27,4 +27,5 @@ class UserBusinessAccount extends Model
     {
         return $this->hasMany(GetReview::class, 'page_id', 'provider_account_id');
     }
+
 }

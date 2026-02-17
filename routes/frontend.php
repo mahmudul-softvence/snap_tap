@@ -19,7 +19,6 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Frontend\PaymentMethodController;
 use App\Http\Controllers\Frontend\PlanController;
 use App\Http\Controllers\Frontend\SubscriptionController;
-use App\Http\Controllers\GoogleBusinessController;
 
 Route::middleware('guest:sanctum')->group(function () {
 

@@ -91,6 +91,7 @@ class SyncPageReviewsJob implements ShouldQueue
                         ],
                         [
                             'user_id' => $this->account->user_id,
+                            'user_business_account_id' => $this->account->id,
                             'page_id' => $this->account->provider_account_id,
                             'reviewer_name' => $reviewerName,
                             'reviewer_image' => $reviewerAvatar,
@@ -297,18 +298,20 @@ class SyncPageReviewsJob implements ShouldQueue
 
                 $rating = $reviewItem['starRating'];
 
-                $replyId   = $reviewItem['reviewReply']['replyName'] ?? null;
+                // $replyId   = $reviewItem['reviewReply']['replyName'] ?? null;
+                $replyId   = isset($reviewItem['reviewReply']) ? $reviewItem['reviewReply']['replyName'] . '_' . $this->account->user_id : null;
                 $replyText = $reviewItem['reviewReply']['comment'] ?? null;
                 $repliedAt = $reviewItem['reviewReply']['updateTime'] ?? null;
                 $status    = $replyText ? 'replied' : 'pending';
 
-                GetReview::updateOrCreate(
+                $review = GetReview::updateOrCreate(
                     [
                         'provider' => 'google',
                         'provider_review_id' => $providerReviewId,
                     ],
                     [
                         'user_id'           => $this->account->user_id,
+                        'user_business_account_id' => $this->account->id,
                         'page_id'           => $this->account->provider_account_id,
                         'reviewer_name'     => $reviewerName,
                         'reviewer_image'    => $reviewerAvatar,
@@ -321,11 +324,28 @@ class SyncPageReviewsJob implements ShouldQueue
                         'reviewed_at'       => $reviewItem['createTime'],
                     ]
                 );
+
+                if ($review->wasRecentlyCreated) {
+
+                    $userId = $this->account->user_id;
+
+                    $notifyEnabled = BasicSetting::where('user_id', $userId)
+                        ->where('new_customer_review', 1)
+                        ->exists();
+
+                    if ($notifyEnabled) {
+                        $user = User::find($userId);
+                        if ($user) {
+                            $user->notify(new NewReviewNotification($review));
+                        }
+                    }
+
+                    if ($status === 'pending') {
+                        ReplyToReviewJob::dispatch($review)->delay(now()->addMinutes(1));
+                    }
+                }
             }
         }
-
-
-
     }
 
 
