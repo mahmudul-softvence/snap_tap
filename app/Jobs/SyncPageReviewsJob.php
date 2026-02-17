@@ -288,11 +288,11 @@ class SyncPageReviewsJob implements ShouldQueue
             $googleReviewIds = [];
 
             foreach ($mockGoogleReviews as $reviewItem) {
-                $providerReviewId = $reviewItem['name'];
+                $providerReviewId = $reviewItem['name'] . '_' . $this->account->user_id;
                 $googleReviewIds[] = $providerReviewId;
 
                 $reviewerName = $reviewItem['reviewer']['displayName'];
-                
+
                 $reviewerAvatar = "https://ui-avatars.com/api/?name=" . urlencode($reviewerName) . "&background=dc3545&color=fff";
 
                 $rating = $reviewItem['starRating'];

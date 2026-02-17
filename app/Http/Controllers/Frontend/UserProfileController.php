@@ -17,7 +17,7 @@ class UserProfileController extends Controller
 {
     public function authMe()
     {
-        $user = User::with('businessProfile', 'businessAccounts')->find(Auth::id());
+        $user = User::with('businessProfile', 'businessAccounts', 'basicSetting')->find(Auth::id());
 
         $subscription = auth()->user()->subscription('default');
 
@@ -59,19 +59,27 @@ class UserProfileController extends Controller
     public function update(Request $request)
     {
         $user = Auth::user();
-        abort_if($user->id !== Auth::id(), 403, 'Unauthorized');
+        abort_if(!$user, 403, 'Unauthorized');
+
         $business = $user->businessProfile;
 
         $validator = Validator::make($request->all(), [
-            'name'      => 'required|string|max:255',
+            'name'      => 'nullable|string|max:255',
             'phone'     => 'nullable|string|max:50',
-            'email'     => 'required|email|unique:users,email,' . $user->id,
+            'email'     => 'nullable|email|unique:users,email,' . $user->id,
             'image'     => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
-            'b_name'    => 'required_with:b_type,b_email,b_phone,b_website,b_address,b_logo|string|max:255',
-            'b_type'    => 'required_with:b_name,b_email,b_phone,b_website,b_address,b_logo|string|max:255',
-            'b_email'   => ['nullable', 'email', 'max:255', Rule::unique('business_profiles', 'b_email')->ignore($business->id ?? null),],
+
+            'b_name'    => 'nullable|string|max:255',
+            'b_type'    => 'nullable|string|max:255',
+            'b_email'   => [
+                'nullable',
+                'email',
+                'max:255',
+                Rule::unique('business_profiles', 'b_email')
+                    ->ignore($business->id ?? null),
+            ],
             'b_phone'   => 'nullable|string|max:50',
-            'b_website' => 'nullable|url|max:255',
+            'b_website' => 'nullable|string|max:255',
             'b_address' => 'nullable|string|max:255',
             'b_logo'    => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
         ]);
@@ -80,43 +88,77 @@ class UserProfileController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Validation Error.',
-                'errors' => $validator->errors(),
+                'errors'  => $validator->errors(),
             ], 422);
         }
 
-        $image = ImageUpload::upload($request->image, 'user', $user->image);
-        $user->name = $request->name;
+
+        if ($request->filled('name')) {
+            $user->name = $request->name;
+        }
+
         if ($request->filled('email')) {
             $user->email = $request->email;
         }
-        $user->phone = $request->phone;
-        $user->image = $image;
+
+        if ($request->filled('phone')) {
+            $user->phone = $request->phone;
+        }
+
+        if ($request->hasFile('image')) {
+            $user->image = ImageUpload::upload(
+                $request->image,
+                'user',
+                $user->image
+            );
+        }
+
         $user->save();
 
-        if ($request->filled('b_name') && $request->filled('b_type')) {
 
-            $b_logo = ImageUpload::upload($request->b_logo, 'business_profile', $business?->b_logo);
+        if ($request->hasAny([
+            'b_name',
+            'b_type',
+            'b_email',
+            'b_phone',
+            'b_website',
+            'b_address',
+            'b_logo'
+        ])) {
 
-            $business = BusinessProfile::updateOrCreate([
-                'user_id' => $user->id
-            ], [
-                'b_name'    => $request->b_name,
-                'b_type'    => $request->b_type,
-                'b_email'   => $request->b_email,
-                'b_phone'   => $request->b_phone,
-                'b_website' => $request->b_website,
-                'b_address' => $request->b_address,
-                'b_logo'    => $b_logo,
+            $data = $request->only([
+                'b_name',
+                'b_type',
+                'b_email',
+                'b_phone',
+                'b_website',
+                'b_address',
             ]);
+
+            if ($request->hasFile('b_logo')) {
+                $data['b_logo'] = ImageUpload::upload(
+                    $request->b_logo,
+                    'business_profile',
+                    $business?->b_logo
+                );
+            }
+
+            BusinessProfile::updateOrCreate(
+                ['user_id' => $user->id],
+                $data
+            );
         }
+
         $user->refresh()->load('businessProfile');
+
         return response()->json([
             'success' => true,
             'message' => 'Profile updated successfully',
-            'user' => $user,
-            // 'business' => isset($business) ? $business : null
+            'user'    => $user,
         ]);
     }
+
+
 
     public function integration()
     {
@@ -171,33 +213,6 @@ class UserProfileController extends Controller
             'business_account' => $businessAccount
         ], 200);
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

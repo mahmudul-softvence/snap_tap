@@ -44,7 +44,7 @@ Route::middleware('guest:sanctum')->group(function () {
     });
 
     Route::post('/2fa/login', [TwoFactorController::class, 'loginVerify']);
-    //Email 2FA
+    //Email 2FA OTP sent
     Route::post('/2fa/email/send', [TwoFactorController::class, 'sendEmailCode']);
 
     Route::get('change_review_status/{id}', [ReviewReqController::class, 'change_review_status']);
@@ -126,19 +126,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/gmb/locations/{account}', [GmbController::class, 'locations']);
     Route::get('/gmb/reviews/{location}', [GmbController::class, 'reviews']);
     Route::post('/gmb/reply', [GmbController::class, 'reply']);
+
+
+    //mock account
+    Route::post('/create-mock-google', [GmbController::class, 'createMockGoogle']);
+    Route::get('/google-gmb-account', [GmbController::class, 'googleAccounts']);
 });
 
-
-/// fake GMB routes for testing (Mock Version)
-// Route::get('/google/gmb/auth-url', [GmbMockVersionController::class, 'authUrl']);
-// Route::get('/google/gmb/callback', [GmbMockVersionController::class, 'callback']);
-
-// Route::middleware('auth:sanctum')->group(function () {
-//     Route::get('/gmb/accounts', [GmbMockVersionController::class, 'accounts']);
-//     Route::get('/gmb/locations/{account}', [GmbMockVersionController::class, 'locations'])->where('account', '.*');
-//     Route::get('/gmb/reviews/{location}', [GmbMockVersionController::class, 'reviews'])->where('location', '.*');
-//     Route::post('/gmb/reply', [GmbMockVersionController::class, 'reply']);
-// });
 
 // For Subscription & plan.
 Route::middleware('auth:sanctum')->group(function () {
@@ -199,10 +193,6 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 
-Route::middleware('auth:sanctum')->group(function () {
-    // Email 2FA
-    // Route::post('/2fa/email/verify', [TwoFactorController::class, 'verifyEmailCode']);
-});
 
 Route::middleware('auth:sanctum')->group(function () {
 

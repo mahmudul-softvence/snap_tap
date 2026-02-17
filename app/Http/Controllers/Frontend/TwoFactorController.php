@@ -12,35 +12,6 @@ use App\Mail\TwoFactorCodeMail;
 
 class TwoFactorController extends Controller
 {
-
-    // public function setup(Request $request)
-    // {
-    //     $user = $request->user();
-
-    //     $google2fa = new Google2FA();
-
-    //     $secret = $google2fa->generateSecretKey();
-
-    //     $otpauthUrl = $google2fa->getQRCodeUrl(
-    //         config('app.name'),
-    //         $user->email,
-    //         $secret
-    //     );
-
-    //     $user->update([
-    //         'two_factor_secret' => encrypt($secret)
-    //     ]);
-
-    //     $qrCodeImageUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data='
-    //         . urlencode($otpauthUrl);
-
-    //     return response()->json([
-    //         'qr_code_url' => $qrCodeImageUrl,
-    //         'secret'      => $secret
-    //     ]);
-    // }
-
-
     public function setup(Request $request)
     {
         $user = $request->user();
@@ -168,47 +139,6 @@ class TwoFactorController extends Controller
     }
 
 
-    // public function loginVerify(Request $request)
-    // {
-    //     $request->validate([
-    //         'user_id' => 'required',
-    //         'code' => 'required|digits:6'
-    //     ]);
-
-    //     $user = User::findOrFail($request->user_id);
-
-    //     if (! $user->two_factor_secret) {
-    //         return response()->json([
-    //             'message' => '2FA secret not found. Please setup 2FA first.'
-    //         ], 422);
-    //     }
-
-    //     try {
-    //         $secret = decrypt($user->two_factor_secret);
-    //     } catch (\Exception $e) {
-    //         return response()->json([
-    //             'message' => 'Invalid 2FA secret. Please re-setup 2FA.'
-    //         ], 422);
-    //     }
-
-    //     $google2fa = new \PragmaRX\Google2FA\Google2FA();
-
-    //     if (! $google2fa->verifyKey($secret, $request->code)) {
-    //         return response()->json(['message' => 'Invalid OTP'], 422);
-    //     }
-
-    //     return response()->json([
-    //         'success' => true,
-    //         'message' => 'Login successful',
-    //         'data' => [
-    //             'token' => $user->createToken('auth')->plainTextToken,
-    //             'name'  => $user->name,
-    //             'email' => $user->email,
-    //             'roles' => $user->getRoleNames(),
-    //         ],
-    //     ], 200);
-    // }
-
 
     // STEP 4: Disable 2FA
     public function disable(Request $request)
@@ -221,7 +151,6 @@ class TwoFactorController extends Controller
 
         return response()->json(['message' => '2FA disabled']);
     }
-
 
 
 
@@ -238,41 +167,6 @@ class TwoFactorController extends Controller
         Mail::to($user->email)->send(new TwoFactorCodeMail($code));
 
         return response()->json(['message' => 'Email 2FA code has been sent.']);
-        
-        // $user = $request->user();
-
-        // $code = rand(100000, 999999);
-
-        // $user->two_factor_email_code = $code;
-        // $user->two_factor_email_expires_at = now()->addMinutes(10);
-        // $user->save();
-
-        // Mail::to($user->email)->send(new TwoFactorCodeMail($code));
-
-        // return response()->json(['message' => 'Email 2FA code has been sent.']);
     }
 
-    // public function verifyEmailCode(Request $request)
-    // {
-    //     $request->validate([
-    //         'code' => 'required|digits:6',
-    //     ]);
-
-    //     $user = $request->user();
-
-    //     if (
-    //         $user->two_factor_email_code == $request->code &&
-    //         $user->two_factor_email_expires_at->isFuture()
-    //     ) {
-
-    //         $user->two_factor_email_code = null;
-    //         $user->save();
-
-    //         return response()->json(['message' => 'Email 2FA verified successfully.']);
-    //     }
-
-    //     return response()->json([
-    //         'message' => 'Invalid code or code has expired.'
-    //     ], 422);
-    // }
 }
