@@ -51,7 +51,6 @@ class SettingController extends Controller
 
     public function updateSettings(Request $request)
     {
-        \Log::info($request->all());
         $user = Auth::user();
         abort_if(!$user || !$user->hasRole('super_admin'), 403, 'Unauthorized');
 
@@ -96,9 +95,13 @@ class SettingController extends Controller
             'new_customer_singup_n' => 'nullable|boolean',
             'customer_plan_upgraded_n' => 'nullable|boolean',
             'customer_subs_cancel_n' => 'nullable|boolean',
+
+            'auto_time_zone'    => 'nullable|boolean',
+            'lang'           => 'nullable|string|max:10',
+            'date_format'          => 'nullable|string|max:20',
         ];
 
-        $request->validate($rules);
+        $validatedData = $request->validate($rules);
 
         // Sensitive fields to encrypt
         $sensitiveKeys = [
@@ -113,34 +116,31 @@ class SettingController extends Controller
             'chatgpt_api_key'
         ];
 
-        // Image fields
         $imageFields = ['platform_logo', 'signup_onboarding_image', 'login_onboarding_image'];
 
         $updatedSettings = [];
 
-        foreach ($request->all() as $key => $value) {
-            // Handle image upload
-           if (in_array($key, $imageFields) && $request->hasFile($key)) {
-                $setting = Setting::firstOrCreate(['key' => $key]);
+        foreach ($validatedData as $key => $value) {
 
-                $oldImagePath = $setting->getRawOriginal('value');
+            if (in_array($key, $imageFields)) {
+                if ($request->hasFile($key)) {
+                    $setting = Setting::firstOrCreate(['key' => $key]);
+                    $oldImagePath = $setting->getRawOriginal('value');
 
-                $path = ImageUpload::upload($request->file($key), 'setting', $oldImagePath);
-                $setting->value = $path;
-                $setting->save();
+                    $path = ImageUpload::upload($request->file($key), 'setting', $oldImagePath);
+                    $setting->value = $path;
+                    $setting->save();
 
-                $updatedSettings[] = ['key' => $key, 'value' => asset($path)];
+                    $updatedSettings[] = ['key' => $key, 'value' => asset($path)];
+                } else {
+                    $existing = Setting::where('key', $key)->first();
+                    if ($existing) $updatedSettings[] = ['key' => $key, 'value' => asset($existing->value)];
+                }
                 continue;
             }
 
-            // Encrypt sensitive fields
-            if (in_array($key, $sensitiveKeys) && $value !== null) {
-                $valueToSave = Crypt::encryptString($value);
-                $isSensitive = true;
-            } else {
-                $valueToSave = $value;
-                $isSensitive = false;
-            }
+            $isSensitive = in_array($key, $sensitiveKeys);
+            $valueToSave = ($isSensitive && !is_null($value)) ? Crypt::encryptString($value) : $value;
 
             Setting::updateOrCreate(
                 ['key' => $key],

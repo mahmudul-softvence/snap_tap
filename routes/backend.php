@@ -13,7 +13,7 @@ Route::controller(UserProfileController::class)->group(function () {
 
 Route::middleware('role:super_admin', 'auth:sanctum')->group(function () {
     Route::get('/admin/settings', [SettingController::class, 'index']);
-    Route::put('/admin/settings/update', [SettingController::class, 'updateSettings']);
+    Route::post('/admin/settings/update', [SettingController::class, 'updateSettings']);
 });
 
 //ADMIN PLAN AND SUBSCRIPTION.
