@@ -161,7 +161,7 @@ class TwoFactorController extends Controller
 
         $code = rand(100000, 999999);
         $user->two_factor_email_code = $code;
-        $user->two_factor_email_expires_at = now()->addMinutes(10);
+        $user->two_factor_email_expires_at = now()->addMinutes(2);
         $user->save();
 
         Mail::to($user->email)->send(new TwoFactorCodeMail($code));

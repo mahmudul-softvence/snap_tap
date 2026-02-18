@@ -56,7 +56,7 @@
         <h2>Your 2FA Code</h2>
         <p>Your two-factor authentication code is shown below:</p>
         <div class="code">{{ $code }}</div>
-        <p>Please use this code within 10 minutes.</p>
+        <p>Please use this code within 2 minutes.</p>
         <div class="footer">
             If you did not request this code, no action is required.
         </div>
