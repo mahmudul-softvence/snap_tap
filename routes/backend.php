@@ -17,7 +17,7 @@ Route::middleware('role:super_admin', 'auth:sanctum')->group(function () {
 });
 
 //ADMIN PLAN AND SUBSCRIPTION.
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware('role:super_admin', 'auth:sanctum')->group(function () {
     Route::get('/adminplan', [AdminPlanController::class, 'index']);
     Route::post('/plan/create', [AdminPlanController::class, 'store']);
     Route::delete('/plan/delete/{id}', [AdminPlanController::class, 'deletePlan']);
