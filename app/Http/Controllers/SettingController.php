@@ -51,15 +51,16 @@ class SettingController extends Controller
 
     public function updateSettings(Request $request)
     {
+        \Log::info($request->all());
         $user = Auth::user();
         abort_if(!$user || !$user->hasRole('super_admin'), 403, 'Unauthorized');
 
         $rules = [
             // Platform
             'platform_name' => 'nullable|string|max:255',
-            'platform_logo' => 'nullable|image|mimes:jpg,jpeg,png,gif|max:5120',
-            'signup_onboarding_image' => 'nullable|image|mimes:jpg,jpeg,png,gif|max:5120',
-            'login_onboarding_image' => 'nullable|image|mimes:jpg,jpeg,png,gif|max:5120',
+            'platform_logo' => 'nullable|mimes:jpg,jpeg,png,gif|max:5120',
+            'signup_onboarding_image' => 'nullable|mimes:jpg,jpeg,png,gif|max:5120',
+            'login_onboarding_image' => 'nullable|mimes:jpg,jpeg,png,gif|max:5120',
 
             // Mail
             'mail_mailer' => 'nullable|string',
@@ -119,12 +120,16 @@ class SettingController extends Controller
 
         foreach ($request->all() as $key => $value) {
             // Handle image upload
-            if (in_array($key, $imageFields) && $request->hasFile($key)) {
+           if (in_array($key, $imageFields) && $request->hasFile($key)) {
                 $setting = Setting::firstOrCreate(['key' => $key]);
-                $path = ImageUpload::upload($request->file($key), 'setting', $setting->value);
+
+                $oldImagePath = $setting->getRawOriginal('value');
+
+                $path = ImageUpload::upload($request->file($key), 'setting', $oldImagePath);
                 $setting->value = $path;
                 $setting->save();
-                $updatedSettings[] = ['key' => $key, 'value' => $path];
+
+                $updatedSettings[] = ['key' => $key, 'value' => asset($path)];
                 continue;
             }
 

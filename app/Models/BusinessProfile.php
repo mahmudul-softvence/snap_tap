@@ -21,4 +21,9 @@ class BusinessProfile extends Model
     {
         return $this->belongsTo(User::class, 'user_id', 'id');
     }
+
+    public function getBLogoAttribute($value)
+    {
+        return $value ? asset($value) : null;
+    }
 }

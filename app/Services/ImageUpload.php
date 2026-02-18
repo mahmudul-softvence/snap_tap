@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\File;
 
 class ImageUpload
 {
+
     public static function upload($image, $type = 'default', $oldImage = null)
     {
         if (!$image) {
@@ -21,22 +22,27 @@ class ImageUpload
         ];
 
         $folder = $folders[$type] ?? 'others';
-
         $path = public_path("uploads/$folder");
 
         if (!File::exists($path)) {
             File::makeDirectory($path, 0755, true);
         }
 
-        if ($oldImage && File::exists(public_path($oldImage))) {
-            File::delete(public_path($oldImage));
+        if ($oldImage) {
+            $cleanPath = str_replace(url('/'), '', $oldImage);
+            $fullOldPath = public_path(ltrim($cleanPath, '/'));
+
+            if (File::exists($fullOldPath)) {
+                File::delete($fullOldPath);
+            }
         }
 
         $fileName = time() . '_' . Str::random(10) . '.' . $image->getClientOriginalExtension();
         $image->move($path, $fileName);
 
-        return asset("uploads/$folder/$fileName");
+        return "uploads/$folder/$fileName";
     }
+
 }
 
 //blade view like <img src="{{ asset($user->image) }}" alt="">

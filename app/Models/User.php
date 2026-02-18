@@ -65,7 +65,7 @@ class User extends Authenticatable implements MustVerifyEmail
 
     protected $casts = [
         'two_factor_email_expires_at' => 'datetime',
-        'two_factor_code_expires_at' => 'datetime', 
+        'two_factor_code_expires_at' => 'datetime',
     ];
 
     public function sendEmailVerificationNotification()
@@ -120,5 +120,10 @@ class User extends Authenticatable implements MustVerifyEmail
     public function subscriptions()
     {
         return $this->hasMany(Subscription::class);
+    }
+
+    public function getImageAttribute($value)
+    {
+        return $value ? asset($value) : null;
     }
 }
