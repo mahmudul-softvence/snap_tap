@@ -13,170 +13,340 @@ use Illuminate\Support\Facades\Http;
 
 class DashboardController extends Controller
 {
-    public function dashboard()
+    // public function dashboard()
+    // {
+    //     $total_request = Review::where('user_id', Auth::id())->count();
+
+    //     $reviewed_reviews = Review::where('user_id', Auth::id())
+    //         ->where('status', 'reviewed')
+    //         ->count();
+
+    //     $response_rate = $total_request > 0
+    //         ? round(($reviewed_reviews / $total_request) * 100, 2)
+    //         : 0;
+
+    //     $recent_request = auth()->user()->reviews()->latest()->take(10)->get();
+
+    //     $reviews = GetReview::where('user_id', Auth::id())
+    //         ->orderBy('reviewed_at', 'desc')
+    //         ->get()
+    //         ->map(function ($review) {
+    //             return [
+    //                 'provider' => $review->provider,
+    //                 'review_id' => $review->provider_review_id,
+    //                 'page_id' => $review->page_id,
+    //                 'review_text' => $review->review_text,
+    //                 'rating' => $review->rating,
+    //                 'recommendation_type' => $review->rating >= 4 ? 'positive' : 'negative',
+    //                 'reviewer_name' => $review->reviewer_name,
+    //                 'reviewer_avatar' => $review->reviewer_image,
+    //                 'created_time' => \Carbon\Carbon::parse($review->reviewed_at)->format('Y-m-d H:i:s'),
+    //                 'reply_status' => $review->status,
+    //                 'reply_id' => $review->review_reply_id,
+    //                 'reply_text' => $review->review_reply_text,
+    //                 'replied_at' => $review->replied_at,
+    //             ];
+    //         });
+
+    //     $recentReviews = $reviews->take(10)->values();
+    //     $totalReview = $reviews->count();
+    //     $avgRating = $totalReview > 0
+    //         ? round($reviews->avg('rating'), 1)
+    //         : 0;
+
+    //     return response()->json([
+    //         'success' => true,
+    //         'data' => [
+    //             'total_request' => $total_request,
+    //             'total_review' => $totalReview,
+    //             'avg_rating' => $avgRating,
+    //             'response_rate' => $response_rate,
+    //             'recent_request' => $recent_request,
+    //             'total' => $recentReviews->count(),
+    //             'reviews' => $recentReviews,
+    //         ],
+    //     ]);
+    // }
+
+        public function dashboard()
     {
-        $total_request = Review::where('user_id', Auth::id())->count();
+        $user = auth()->user();
 
-        $reviewed_reviews = Review::where('user_id', Auth::id())
-            ->where('status', 'reviewed')
-            ->count();
+        $hasAccess = $user->subscribed('default');
 
-        $response_rate = $total_request > 0
-            ? round(($reviewed_reviews / $total_request) * 100, 2)
-            : 0;
+        if ($hasAccess) {
+            $total_request = Review::where('user_id', $user->id)->count();
+            $reviewed_reviews = Review::where('user_id', $user->id)->where('status', 'reviewed')->count();
+            $response_rate = $total_request > 0 ? round(($reviewed_reviews / $total_request) * 100, 2) : 0;
+            $recent_request = $user->reviews()->latest()->take(10)->get();
 
-        $recent_request = auth()->user()->reviews()->latest()->take(10)->get();
+            $reviews = GetReview::where('user_id', $user->id)
+                ->orderBy('reviewed_at', 'desc')
+                ->get()
+                ->map(function ($review) {
+                    return [
+                        'provider' => $review->provider,
+                        'review_id' => $review->provider_review_id,
+                        'review_text' => $review->review_text,
+                        'rating' => $review->rating,
+                        'recommendation_type' => $review->rating >= 4 ? 'positive' : 'negative',
+                        'reviewer_name' => $review->reviewer_name,
+                        'reviewer_avatar' => $review->reviewer_image,
+                        'created_time' => \Carbon\Carbon::parse($review->reviewed_at)->format('Y-m-d H:i:s'),
+                        'reply_status' => $review->status,
+                        'reply_id' => $review->review_reply_id,
+                        'reply_text' => $review->review_reply_text,
+                        'replied_at' => $review->replied_at,
+                    ];
+                });
 
-        $reviews = GetReview::where('user_id', Auth::id())
-            ->orderBy('reviewed_at', 'desc')
-            ->get()
-            ->map(function ($review) {
-                return [
-                    'provider' => $review->provider,
-                    'review_id' => $review->provider_review_id,
-                    'page_id' => $review->page_id,
-                    'review_text' => $review->review_text,
-                    'rating' => $review->rating,
-                    'recommendation_type' => $review->rating >= 4 ? 'positive' : 'negative',
-                    'reviewer_name' => $review->reviewer_name,
-                    'reviewer_avatar' => $review->reviewer_image,
-                    'created_time' => \Carbon\Carbon::parse($review->reviewed_at)->format('Y-m-d H:i:s'),
-                    'reply_status' => $review->status,
-                    'reply_id' => $review->review_reply_id,
-                    'reply_text' => $review->review_reply_text,
-                    'replied_at' => $review->replied_at,
-                ];
-            });
+            $recentReviews = $reviews->take(10)->values();
+            $totalReview = $reviews->count();
+            $avgRating = $totalReview > 0 ? round($reviews->avg('rating'), 1) : 0;
 
-        $recentReviews = $reviews->take(10)->values();
-        $totalReview = $reviews->count();
-        $avgRating = $totalReview > 0
-            ? round($reviews->avg('rating'), 1)
-            : 0;
+        } else {
+            $total_request = 0;
+            $totalReview = 0;
+            $avgRating = 0;
+            $response_rate = 0;
+            $recent_request = [];
+            $recentReviews = [];
+        }
 
         return response()->json([
             'success' => true,
             'data' => [
+                'has_active_subscription' => $hasAccess,
                 'total_request' => $total_request,
                 'total_review' => $totalReview,
                 'avg_rating' => $avgRating,
                 'response_rate' => $response_rate,
                 'recent_request' => $recent_request,
-                'total' => $recentReviews->count(),
+                'total' => count($recentReviews),
                 'reviews' => $recentReviews,
             ],
         ]);
     }
 
+        // public function analytics()
+    // {
+    //     $userId = Auth::id();
+
+    //     $total_request = Review::where('user_id', $userId)->count();
+
+    //     $currentMonth = Carbon::now()->month;
+    //     $currentYear  = Carbon::now()->year;
+
+    //     $reviews = collect([]);
+
+    //     $facebookReviewCount = 0;
+    //     $googleReviewCount   = 0;
+
+    //     $dbReviews = GetReview::where('user_id', $userId)->get();
+
+    //     $response_rate = $total_request > 0
+    //         ? round((GetReview::where('user_id', $userId)
+    //             ->where('status', 'reviewed')
+    //             ->count() / $total_request) * 100, 2)
+    //         : 0;
+
+    //     foreach ($dbReviews as $review) {
+
+    //         $createdAt = Carbon::parse($review->reviewed_at ?? $review->created_at);
+
+    //         $reviewMonth = $createdAt->month;
+    //         $reviewYear  = $createdAt->year;
+
+    //         if ($reviewMonth === $currentMonth && $reviewYear === $currentYear) {
+    //             if ($review->provider === 'facebook') {
+    //                 $facebookReviewCount++;
+    //             }
+
+    //             if ($review->provider === 'google') {
+    //                 $googleReviewCount++;
+    //             }
+    //         }
+
+    //         $reviews->push([
+    //             'rating' => (int) $review->rating,
+    //             'provider' => $review->provider,
+    //             'created_time' => $createdAt,
+    //         ]);
+    //     }
+
+    //     $starBreakdown = collect([1, 2, 3, 4, 5])->mapWithKeys(function ($star) use ($reviews, $currentMonth, $currentYear) {
+
+    //         $count = $reviews->filter(function ($r) use ($star, $currentMonth, $currentYear) {
+    //             return $r['rating'] == $star
+    //                 && Carbon::parse($r['created_time'])->month === $currentMonth
+    //                 && Carbon::parse($r['created_time'])->year === $currentYear;
+    //         })->count();
+
+    //         return [$star => $count];
+    //     });
+
+    //     $total_review = $reviews->count();
+
+    //     $avg_rating = $total_review > 0
+    //         ? round($reviews->avg('rating'), 1)
+    //         : 0;
+
+    //     $months = collect();
+    //     $now = Carbon::now()->startOfMonth();
+
+    //     for ($i = 5; $i >= 0; $i--) {
+
+    //         $month = $now->copy()->subMonths($i);
+
+    //         $total = Review::where('user_id', $userId)
+    //             ->whereYear('created_at', $month->year)
+    //             ->whereMonth('created_at', $month->month)
+    //             ->count();
+
+    //         $reviewed = Review::where('user_id', $userId)
+    //             ->where('status', 'reviewed')
+    //             ->whereYear('created_at', $month->year)
+    //             ->whereMonth('created_at', $month->month)
+    //             ->count();
+
+    //         $months->push([
+    //             'month' => $month->format('M'),
+    //             'year'  => $month->year,
+    //             'sent_request' => $total,
+    //             'reviews_received' => $reviewed,
+    //         ]);
+    //     }
+
+    //     // $recent_request = Review::latest()->take(10)->get();
+
+    //     return response()->json([
+    //         'success' => true,
+    //         'data' => [
+    //             'total_request' => $total_request,
+    //             'total_review'  => $total_review,
+    //             'avg_rating'    => $avg_rating,
+    //             'response_rate'    => $response_rate,
+
+    //             'facebook_review_count_current_month' => $facebookReviewCount,
+    //             'google_review_count_current_month'   => $googleReviewCount,
+
+    //             'star_breakdown_current_month' => $starBreakdown,
+    //             'last_6_months' => $months,
+
+    //             // 'recent_request' => $recent_request,
+    //         ],
+    //     ]);
+    // }
+
+
     public function analytics()
     {
-        $userId = Auth::id();
+        $user = auth()->user();
+        $userId = $user->id;
 
-        $total_request = Review::where('user_id', $userId)->count();
+        $hasAccess = $user->subscribed('default');
 
-        $currentMonth = Carbon::now()->month;
-        $currentYear  = Carbon::now()->year;
-
-        $reviews = collect([]);
-
+        $total_request = 0;
+        $total_review = 0;
+        $avg_rating = 0;
+        $response_rate = 0;
         $facebookReviewCount = 0;
-        $googleReviewCount   = 0;
+        $googleReviewCount = 0;
+        $starBreakdown = collect([1 => 0, 2 => 0, 3 => 0, 4 => 0, 5 => 0]);
+        $months = collect();
 
-        $dbReviews = GetReview::where('user_id', $userId)->get();
+        if ($hasAccess) {
 
-        $response_rate = $total_request > 0
-            ? round((GetReview::where('user_id', $userId)
-                ->where('status', 'reviewed')
-                ->count() / $total_request) * 100, 2)
-            : 0;
+            $total_request = Review::where('user_id', $userId)->count();
+            $currentMonth = Carbon::now()->month;
+            $currentYear  = Carbon::now()->year;
 
-        foreach ($dbReviews as $review) {
+            $dbReviews = GetReview::where('user_id', $userId)->get();
+            $reviews = collect([]);
 
-            $createdAt = Carbon::parse($review->reviewed_at ?? $review->created_at);
+            $reviewedCount = GetReview::where('user_id', $userId)->where('status', 'reviewed')->count();
+            $response_rate = $total_request > 0 ? round(($reviewedCount / $total_request) * 100, 2) : 0;
 
-            $reviewMonth = $createdAt->month;
-            $reviewYear  = $createdAt->year;
+            foreach ($dbReviews as $review) {
+                $createdAt = Carbon::parse($review->reviewed_at ?? $review->created_at);
+                $reviewMonth = $createdAt->month;
+                $reviewYear  = $createdAt->year;
 
-            if ($reviewMonth === $currentMonth && $reviewYear === $currentYear) {
-                if ($review->provider === 'facebook') {
-                    $facebookReviewCount++;
+                if ($reviewMonth === $currentMonth && $reviewYear === $currentYear) {
+                    if ($review->provider === 'facebook') $facebookReviewCount++;
+                    if ($review->provider === 'google') $googleReviewCount++;
                 }
 
-                if ($review->provider === 'google') {
-                    $googleReviewCount++;
-                }
+                $reviews->push([
+                    'rating' => (int) $review->rating,
+                    'provider' => $review->provider,
+                    'created_time' => $createdAt,
+                ]);
             }
 
-            $reviews->push([
-                'rating' => (int) $review->rating,
-                'provider' => $review->provider,
-                'created_time' => $createdAt,
-            ]);
+            $starBreakdown = collect([1, 2, 3, 4, 5])->mapWithKeys(function ($star) use ($reviews, $currentMonth, $currentYear) {
+                $count = $reviews->filter(function ($r) use ($star, $currentMonth, $currentYear) {
+                    return $r['rating'] == $star
+                        && $r['created_time']->month === $currentMonth
+                        && $r['created_time']->year === $currentYear;
+                })->count();
+                return [$star => $count];
+            });
+
+            $total_review = $reviews->count();
+            $avg_rating = $total_review > 0 ? round($reviews->avg('rating'), 1) : 0;
+
+            $now = Carbon::now()->startOfMonth();
+            for ($i = 5; $i >= 0; $i--) {
+                $month = $now->copy()->subMonths($i);
+                $total = Review::where('user_id', $userId)
+                    ->whereYear('created_at', $month->year)
+                    ->whereMonth('created_at', $month->month)
+                    ->count();
+
+                $reviewed = Review::where('user_id', $userId)
+                    ->where('status', 'reviewed')
+                    ->whereYear('created_at', $month->year)
+                    ->whereMonth('created_at', $month->month)
+                    ->count();
+
+                $months->push([
+                    'month' => $month->format('M'),
+                    'year'  => $month->year,
+                    'sent_request' => $total,
+                    'reviews_received' => $reviewed,
+                ]);
+            }
+        } else {
+            $now = Carbon::now()->startOfMonth();
+            for ($i = 5; $i >= 0; $i--) {
+                $month = $now->copy()->subMonths($i);
+                $months->push([
+                    'month' => $month->format('M'),
+                    'year'  => $month->year,
+                    'sent_request' => 0,
+                    'reviews_received' => 0,
+                ]);
+            }
         }
-
-        $starBreakdown = collect([1, 2, 3, 4, 5])->mapWithKeys(function ($star) use ($reviews, $currentMonth, $currentYear) {
-
-            $count = $reviews->filter(function ($r) use ($star, $currentMonth, $currentYear) {
-                return $r['rating'] == $star
-                    && Carbon::parse($r['created_time'])->month === $currentMonth
-                    && Carbon::parse($r['created_time'])->year === $currentYear;
-            })->count();
-
-            return [$star => $count];
-        });
-
-        $total_review = $reviews->count();
-
-        $avg_rating = $total_review > 0
-            ? round($reviews->avg('rating'), 1)
-            : 0;
-
-        $months = collect();
-        $now = Carbon::now()->startOfMonth();
-
-        for ($i = 5; $i >= 0; $i--) {
-
-            $month = $now->copy()->subMonths($i);
-
-            $total = Review::where('user_id', $userId)
-                ->whereYear('created_at', $month->year)
-                ->whereMonth('created_at', $month->month)
-                ->count();
-
-            $reviewed = Review::where('user_id', $userId)
-                ->where('status', 'reviewed')
-                ->whereYear('created_at', $month->year)
-                ->whereMonth('created_at', $month->month)
-                ->count();
-
-            $months->push([
-                'month' => $month->format('M'),
-                'year'  => $month->year,
-                'sent_request' => $total,
-                'reviews_received' => $reviewed,
-            ]);
-        }
-
-        // $recent_request = Review::latest()->take(10)->get();
 
         return response()->json([
             'success' => true,
+            'has_access' => $hasAccess,
             'data' => [
                 'total_request' => $total_request,
                 'total_review'  => $total_review,
                 'avg_rating'    => $avg_rating,
-                'response_rate'    => $response_rate,
-
+                'response_rate' => $response_rate,
                 'facebook_review_count_current_month' => $facebookReviewCount,
                 'google_review_count_current_month'   => $googleReviewCount,
-
                 'star_breakdown_current_month' => $starBreakdown,
                 'last_6_months' => $months,
-
-                // 'recent_request' => $recent_request,
             ],
         ]);
     }
+
+
 
 
 
