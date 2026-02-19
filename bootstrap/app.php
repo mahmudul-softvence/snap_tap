@@ -17,10 +17,9 @@ return Application::configure(basePath: dirname(__DIR__))
         __DIR__ . '/../app/Console/Commands',
     ])
     ->withSchedule(function ($schedule) {
-        $schedule->command('subscriptions:dispatch-renewal-reminders')->dailyAt('09:00')->withoutOverlapping()->onOneServer();
-        // $schedule->command('subscriptions:dispatch-renewal-reminders')->everyMinute()->withoutOverlapping()
-        // ->onOneServer();
-            // ->dailyAt('09:00')->withoutOverlapping()->onOneServer();
+        $schedule->command('subscriptions:dispatch-renewal-reminders')
+     // ->everyMinute()->withoutOverlapping()->onOneServer();
+        ->dailyAt('09:00')->withoutOverlapping()->onOneServer();
     })
     ->withProviders([
         EventServiceProvider::class,
@@ -31,6 +30,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
             'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
             'auth' => \App\Http\Middleware\Authenticate::class,
+            'hasSubscription' => \App\Http\Middleware\EnsureUserHasActiveSubscription::class,
         ]);
         $middleware->validateCsrfTokens(except: [
                 'stripe/*',

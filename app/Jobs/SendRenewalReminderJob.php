@@ -22,28 +22,23 @@ class SendRenewalReminderJob implements ShouldQueue
     {
         Log::info('Renewal Reminder Job started.');
 
-       $startDate = now('UTC')
-            ->addMonth()
-            ->subDay()
-            ->startOfDay();
+        $targetDate = now('UTC')->addDays(7)->toDateString();
 
-        $endDate = now('UTC')
-            ->addMonth()
-            ->addDay()
-            ->endOfDay();
+        Log::info("Target renewal date: {$targetDate}");
 
         Subscription::query()
-            ->where(function ($query) use ($startDate, $endDate) {
+            ->where(function ($query) use ($targetDate) {
 
-                $query->where(function ($q) use ($startDate, $endDate) {
+                $query->where(function ($q) use ($targetDate) {
                     $q->where('stripe_status', 'active')
-                      ->whereBetween('current_period_end', [$startDate, $endDate]);
+                    ->whereNotNull('current_period_end')
+                    ->whereDate('current_period_end', $targetDate);
                 })
 
-                ->orWhere(function ($q) use ($startDate, $endDate) {
+                ->orWhere(function ($q) use ($targetDate) {
                     $q->where('stripe_status', 'trialing')
-                      ->whereNotNull('trial_ends_at')
-                      ->whereBetween('trial_ends_at', [$startDate, $endDate]);
+                    ->whereNotNull('trial_ends_at')
+                    ->whereDate('trial_ends_at', $targetDate);
                 });
 
             })
@@ -55,16 +50,16 @@ class SendRenewalReminderJob implements ShouldQueue
                     $user = $subscription->user;
 
                     if (!$user) {
-                        Log::info("No user found");
+                        Log::warning("Subscription {$subscription->id} has no user.");
                         continue;
                     }
 
                     if (!$user->basicSetting?->renewel_reminder) {
-                        Log::info("Reminder found for user {$user->id}");
+                        Log::info("Reminder disabled for user {$user->id}");
                         continue;
                     }
 
-                        Log::info("Sending notification to user {$user->id}");
+                    Log::info("Sending notification to user {$user->id}");
                     $user->notify(
                         new SubscriptionRenewalReminderNotification($subscription)
                     );
