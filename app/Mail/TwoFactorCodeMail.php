@@ -14,10 +14,12 @@ class TwoFactorCodeMail extends Mailable
     use Queueable, SerializesModels;
 
     public $code;
+    public $platformName;
 
-    public function __construct($code)
+    public function __construct($code, $platformName)
     {
         $this->code = $code;
+        $this->platformName = $platformName;
     }
 
     public function build()

@@ -9,6 +9,7 @@ use PragmaRX\Google2FA\Google2FA;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\TwoFactorCodeMail;
+use App\Models\Setting;
 
 class TwoFactorController extends Controller
 {
@@ -164,7 +165,9 @@ class TwoFactorController extends Controller
         $user->two_factor_email_expires_at = now()->addMinutes(2);
         $user->save();
 
-        Mail::to($user->email)->send(new TwoFactorCodeMail($code));
+        $platformName = Setting::where('key', 'platform_name')->value('value');
+
+        Mail::to($user->email)->send(new TwoFactorCodeMail($code, $platformName));
 
         return response()->json(['message' => 'Email 2FA code has been sent.']);
     }
