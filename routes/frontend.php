@@ -119,7 +119,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
 Route::get('/google/gmb/callback', [GmbController::class, 'callback']);
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware('auth:sanctum','hasSubscription')->group(function () {
     Route::get('/google/gmb/auth-url', [GmbController::class, 'authUrl']);
     Route::get('/gmb/accounts', [GmbController::class, 'accounts']);
     Route::get('/gmb/locations/{account}', [GmbController::class, 'locations']);
@@ -165,7 +165,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
 Route::get('/facebook/callback', [FacebookController::class, 'callback']);
 // Facebook
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware('auth:sanctum','hasSubscription')->group(function () {
     Route::get('facebook/auth-url', [FacebookController::class, 'authUrl']);
     Route::get('facebook/session', [FacebookController::class, 'getSessionData']);
     Route::post('facebook/connect-page', [FacebookController::class, 'connectPage']);
@@ -175,7 +175,7 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware('auth:sanctum','hasSubscription')->group(function () {
     // Review List + Filters
     Route::get('/reviews', [ReviewController::class, 'index']);
     // Reply to Review and Delete Reply
