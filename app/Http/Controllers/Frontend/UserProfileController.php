@@ -97,9 +97,9 @@ class UserProfileController extends Controller
             $user->name = $request->name;
         }
 
-        if ($request->filled('email')) {
-            $user->email = $request->email;
-        }
+        // if ($request->filled('email')) {
+        //     $user->email = $request->email;
+        // }
 
         if ($request->filled('phone')) {
             $user->phone = $request->phone;
@@ -242,9 +242,9 @@ class UserProfileController extends Controller
 
         $user->name = $request->name;
 
-        if ($request->filled('email')) {
-            $user->email = $request->email;
-        }
+        // if ($request->filled('email')) {
+        //     $user->email = $request->email;
+        // }
 
         $user->save();
 
