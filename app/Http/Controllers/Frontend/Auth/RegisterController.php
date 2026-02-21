@@ -42,6 +42,7 @@ class RegisterController extends Controller
 
         $input = $request->all();
         $input['password'] = bcrypt($input['password']);
+        $input['password_add_first_time'] = true;
         $user = User::create($input);
         $user->assignRole('user');
 
@@ -148,19 +149,22 @@ class RegisterController extends Controller
     {
         $user = $request->user();
 
-        $hasPassword = Hash::check($request->current_password, '');
+        $mustCheckCurrentPassword = $user->password_add_first_time == 1;
 
         $rules = [
             'new_password' => ['required', 'string', 'min:8', 'confirmed'],
         ];
 
-        if ($hasPassword) {
+        if ($mustCheckCurrentPassword) {
             $rules['current_password'] = ['required', 'string'];
         }
 
         $request->validate($rules);
 
-        if ($hasPassword && !Hash::check($request->current_password, $user->password)) {
+        if (
+            $mustCheckCurrentPassword &&
+            !Hash::check($request->current_password, $user->password)
+        ) {
             throw ValidationException::withMessages([
                 'current_password' => ['Current password is incorrect.'],
             ]);
@@ -168,16 +172,14 @@ class RegisterController extends Controller
 
         $user->update([
             'password' => Hash::make($request->new_password),
+            'password_add_first_time' => 0,
         ]);
-
-        // $request->user()->currentAccessToken()->delete();
 
         return response()->json([
             'success' => true,
             'message' => 'Password changed successfully.',
         ], 200);
     }
-
 
     /**
      * Verify user's email.

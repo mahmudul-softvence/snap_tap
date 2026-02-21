@@ -33,6 +33,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'google_id',
         'facebook_id',
         'password',
+        'password_add_first_time',
         'two_factor_secret',
         'two_factor_enabled',
         'two_factor_confirmed_at'
