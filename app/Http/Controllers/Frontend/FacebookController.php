@@ -130,6 +130,18 @@ class FacebookController extends Controller
             ], 403);
         }
 
+        $pageAlreadyConnected = UserBusinessAccount::where('provider', 'facebook')
+            ->where('provider_account_id', $request->page_id)
+            ->where('user_id', '!=', auth()->id())
+            ->exists();
+
+        if ($pageAlreadyConnected) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This Facebook page is already connected by another user.',
+            ], 403);
+        }
+
         $account = UserBusinessAccount::updateOrCreate(
             [
                 'provider' => 'facebook',

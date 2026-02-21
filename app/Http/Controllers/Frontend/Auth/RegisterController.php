@@ -170,10 +170,9 @@ class RegisterController extends Controller
             ]);
         }
 
-        $user->update([
-            'password' => Hash::make($request->new_password),
-            'password_add_first_time' => 0,
-        ]);
+        $user->password = Hash::make($request->new_password);
+        $user->password_add_first_time = 1;
+        $user->save();
 
         return response()->json([
             'success' => true,

@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::table('get_reviews', function (Blueprint $table) {
             $table->foreignId('user_business_account_id')
-                ->after('page_id')
+                ->after('user_id')
                 ->nullable()
                 ->constrained('user_business_accounts')
                 ->cascadeOnDelete();
