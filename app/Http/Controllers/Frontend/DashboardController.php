@@ -332,7 +332,7 @@ class DashboardController extends Controller
 
         return response()->json([
             'success' => true,
-            'has_access' => $hasAccess,
+            'has_active_subscription' => $hasAccess,
             'data' => [
                 'total_request' => $total_request,
                 'total_review'  => $total_review,
