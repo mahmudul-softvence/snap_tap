@@ -121,14 +121,36 @@ class FacebookController extends Controller
             ->where('provider', 'facebook')
             ->first();
 
-        if ($existingAccount && $existingAccount->provider_account_id !== $request->page_id) {
-            return response()->json([
-                'success' => false,
-                'message' => 'You can only reconnect your previously connected Facebook page.',
-                'allowed_page_id' => $existingAccount->provider_account_id,
-                'allowed_page_name' => $existingAccount->business_name,
-            ], 403);
+        if ($existingAccount) {
+            if ($existingAccount->status === 'disconnect') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Your Facebook account connection has been disabled by the admin. You cannot reconnect at this time. Please contact support.',
+                ], 403);
+            }
+
+            if (trim($existingAccount->provider_account_id) != trim($request->page_id)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You can only reconnect your previously connected Facebook page.',
+                    'allowed_page_id' => $existingAccount->provider_account_id,
+                    'allowed_page_name' => $existingAccount->business_name,
+                ], 403);
+            }
         }
+
+        // $existingAccount = UserBusinessAccount::where('user_id', auth()->id())
+        //     ->where('provider', 'facebook')
+        //     ->first();
+
+        // if ($existingAccount && $existingAccount->provider_account_id !== $request->page_id) {
+        //     return response()->json([
+        //         'success' => false,
+        //         'message' => 'You can only reconnect your previously connected Facebook page.',
+        //         'allowed_page_id' => $existingAccount->provider_account_id,
+        //         'allowed_page_name' => $existingAccount->business_name,
+        //     ], 403);
+        // }
 
         $pageAlreadyConnected = UserBusinessAccount::where('provider', 'facebook')
             ->where('provider_account_id', $request->page_id)

@@ -68,19 +68,26 @@ class DashboardController extends Controller
     //     ]);
     // }
 
-        public function dashboard()
+    public function dashboard()
     {
         $user = auth()->user();
 
         $hasAccess = $user->subscribed('default');
 
-        if ($hasAccess) {
+        $connectedProviders = \App\Models\UserBusinessAccount::where('user_id', $user->id)
+            ->where('status', 'connected')
+            ->pluck('provider')
+            ->toArray();
+
+        if ($hasAccess && !empty($connectedProviders)) {
+
             $total_request = Review::where('user_id', $user->id)->count();
             $reviewed_reviews = Review::where('user_id', $user->id)->where('status', 'reviewed')->count();
             $response_rate = $total_request > 0 ? round(($reviewed_reviews / $total_request) * 100, 2) : 0;
             $recent_request = $user->reviews()->latest()->take(10)->get();
 
             $reviews = GetReview::where('user_id', $user->id)
+                ->whereIn('provider', $connectedProviders)
                 ->orderBy('reviewed_at', 'desc')
                 ->get()
                 ->map(function ($review) {
@@ -103,7 +110,6 @@ class DashboardController extends Controller
             $recentReviews = $reviews->take(10)->values();
             $totalReview = $reviews->count();
             $avgRating = $totalReview > 0 ? round($reviews->avg('rating'), 1) : 0;
-
         } else {
             $total_request = 0;
             $totalReview = 0;
@@ -117,6 +123,7 @@ class DashboardController extends Controller
             'success' => true,
             'data' => [
                 'has_active_subscription' => $hasAccess,
+                'is_account_connected' => !empty($connectedProviders),
                 'total_request' => $total_request,
                 'total_review' => $totalReview,
                 'avg_rating' => $avgRating,
@@ -128,7 +135,7 @@ class DashboardController extends Controller
         ]);
     }
 
-        // public function analytics()
+    // public function analytics()
     // {
     //     $userId = Auth::id();
 
@@ -246,6 +253,11 @@ class DashboardController extends Controller
 
         $hasAccess = $user->subscribed('default');
 
+        $connectedProviders = \App\Models\UserBusinessAccount::where('user_id', $userId)
+            ->where('status', 'connected')
+            ->pluck('provider')
+            ->toArray();
+
         $total_request = 0;
         $total_review = 0;
         $avg_rating = 0;
@@ -255,20 +267,30 @@ class DashboardController extends Controller
         $starBreakdown = collect([1 => 0, 2 => 0, 3 => 0, 4 => 0, 5 => 0]);
         $months = collect();
 
-        if ($hasAccess) {
+        if ($hasAccess && !empty($connectedProviders)) {
 
-            $total_request = Review::where('user_id', $userId)->count();
-            $currentMonth = Carbon::now()->month;
-            $currentYear  = Carbon::now()->year;
+            $total_request = Review::where('user_id', $userId)
+                ->whereIn('provider', $connectedProviders)
+                ->count();
 
-            $dbReviews = GetReview::where('user_id', $userId)->get();
+            $currentMonth = \Carbon\Carbon::now()->month;
+            $currentYear  = \Carbon\Carbon::now()->year;
+
+            $dbReviews = GetReview::where('user_id', $userId)
+                ->whereIn('provider', $connectedProviders)
+                ->get();
+
             $reviews = collect([]);
 
-            $reviewedCount = GetReview::where('user_id', $userId)->where('status', 'reviewed')->count();
+            $reviewedCount = GetReview::where('user_id', $userId)
+                ->whereIn('provider', $connectedProviders)
+                ->where('status', 'reviewed')
+                ->count();
+
             $response_rate = $total_request > 0 ? round(($reviewedCount / $total_request) * 100, 2) : 0;
 
             foreach ($dbReviews as $review) {
-                $createdAt = Carbon::parse($review->reviewed_at ?? $review->created_at);
+                $createdAt = \Carbon\Carbon::parse($review->reviewed_at ?? $review->created_at);
                 $reviewMonth = $createdAt->month;
                 $reviewYear  = $createdAt->year;
 
@@ -296,15 +318,18 @@ class DashboardController extends Controller
             $total_review = $reviews->count();
             $avg_rating = $total_review > 0 ? round($reviews->avg('rating'), 1) : 0;
 
-            $now = Carbon::now()->startOfMonth();
+            $now = \Carbon\Carbon::now()->startOfMonth();
             for ($i = 5; $i >= 0; $i--) {
                 $month = $now->copy()->subMonths($i);
+
                 $total = Review::where('user_id', $userId)
+                    ->whereIn('provider', $connectedProviders)
                     ->whereYear('created_at', $month->year)
                     ->whereMonth('created_at', $month->month)
                     ->count();
 
                 $reviewed = Review::where('user_id', $userId)
+                    ->whereIn('provider', $connectedProviders)
                     ->where('status', 'reviewed')
                     ->whereYear('created_at', $month->year)
                     ->whereMonth('created_at', $month->month)
@@ -318,7 +343,7 @@ class DashboardController extends Controller
                 ]);
             }
         } else {
-            $now = Carbon::now()->startOfMonth();
+            $now = \Carbon\Carbon::now()->startOfMonth();
             for ($i = 5; $i >= 0; $i--) {
                 $month = $now->copy()->subMonths($i);
                 $months->push([

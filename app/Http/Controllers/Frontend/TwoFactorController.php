@@ -10,6 +10,7 @@ use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\TwoFactorCodeMail;
 use App\Models\Setting;
+use Illuminate\Support\Facades\Hash;
 
 class TwoFactorController extends Controller
 {
@@ -144,14 +145,40 @@ class TwoFactorController extends Controller
     // STEP 4: Disable 2FA
     public function disable(Request $request)
     {
-        $request->user()->update([
+        $request->validate([
+            'password' => 'required|string'
+        ]);
+
+        $user = $request->user();
+
+        if (!Hash::check($request->password, $user->password)) {
+            return response()->json([
+                'message' => 'Invalid password'
+            ], 403);
+        }
+
+        $user->update([
             'two_factor_secret' => null,
             'two_factor_enabled' => false,
             'two_factor_confirmed_at' => null
         ]);
 
-        return response()->json(['message' => '2FA disabled']);
+        return response()->json([
+            'message' => '2FA disabled successfully'
+        ]);
     }
+
+
+    // public function disable(Request $request)
+    // {
+    //     $request->user()->update([
+    //         'two_factor_secret' => null,
+    //         'two_factor_enabled' => false,
+    //         'two_factor_confirmed_at' => null
+    //     ]);
+
+    //     return response()->json(['message' => '2FA disabled']);
+    // }
 
 
 
@@ -171,5 +198,4 @@ class TwoFactorController extends Controller
 
         return response()->json(['message' => 'Email 2FA code has been sent.']);
     }
-
 }

@@ -39,6 +39,11 @@ class AppServiceProvider extends ServiceProvider
             return;
         }
 
+        // -----------------------------
+        // APPLICATION NAME (Dynamic)
+        // -----------------------------
+        Config::set('app.name', Setting::get('platform_name', config('app.name')));
+
         /**
          * -----------------------
          * MAIL SETTINGS
@@ -87,13 +92,6 @@ class AppServiceProvider extends ServiceProvider
         Config::set('services.google.redirect', Setting::get('google_redirect_uri', url('/api/auth/google/callback')));
         // Business connect
         Config::set('services.google.business_redirect', Setting::get('google_business_redirect', url('/api/google/gmb/callback')));
-
-        // -----------------------------
-        // TWILIO / SMS
-        // -----------------------------
-        Config::set('services.twilio.sid', Setting::get('twilio_sid'));
-        Config::set('services.twilio.token', Setting::get('twilio_auth_token'));
-        Config::set('services.twilio.from', Setting::get('twilio_from_number'));
 
         // -----------------------------
         // STRIPE
