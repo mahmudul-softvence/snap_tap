@@ -207,9 +207,20 @@ class GmbController extends Controller
     {
         $userId = $request->user_id;
 
+        $existingAccount = \App\Models\UserBusinessAccount::where('user_id', $userId)
+            ->where('provider', 'google')
+            ->first();
+
+        if ($existingAccount && $existingAccount->status === 'disconnect') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Your Google account connection has been disabled by the admin. You cannot reconnect at this time. Please contact support.',
+            ], 403);
+        }
+
         $dynamicProviderId = 'gmb_123456_' . $userId;
 
-        \App\Models\UserBusinessAccount::updateOrCreate(
+        UserBusinessAccount::updateOrCreate(
             ['user_id' => $userId, 'provider' => 'google'],
             [
                 'provider_account_id' => $dynamicProviderId,
@@ -219,27 +230,77 @@ class GmbController extends Controller
             ]
         );
 
-        return response()->json(["message" => "Connect GMB Profile, created for User ID: $userId"]);
+        return response()->json([
+            'success' => true,
+            'message' => "Connect GMB Profile, created for User ID: $userId"
+        ]);
     }
+
+    // public function createMockGoogle(Request $request)
+    // {
+    //     $userId = $request->user_id;
+
+    //     $dynamicProviderId = 'gmb_123456_' . $userId;
+
+    //     \App\Models\UserBusinessAccount::updateOrCreate(
+    //         ['user_id' => $userId, 'provider' => 'google'],
+    //         [
+    //             'provider_account_id' => $dynamicProviderId,
+    //             'business_name' => 'Test Business User ' . $userId,
+    //             'access_token' => 'mock_token',
+    //             'status' => 'connected',
+    //         ]
+    //     );
+
+    //     return response()->json(["message" => "Connect GMB Profile, created for User ID: $userId"]);
+    // }
     ///mock account GMB
     public function googleAccounts()
     {
-        $accounts = UserBusinessAccount::where('user_id', auth()->id())
+        $account = UserBusinessAccount::where('user_id', auth()->id())
             ->where('provider', 'google')
-            ->where('status', 'connected')
-            ->get();
+            ->first();
 
-        if ($accounts->isEmpty()) {
+        if (!$account) {
             return response()->json([
                 'success' => false,
-                'message' => 'No Google Business connected',
+                'message' => 'No Google Business found. Please connect your account.',
                 'accounts' => []
             ], 404);
         }
 
+        if ($account->status === 'disconnect') {
+            return response()->json([
+                'success' => false,
+                'status_type' => 'admin_suspended',
+                'message' => 'Your Google account has been disconnected by the admin. Please contact support.',
+                'accounts' => [],
+            ], 403);
+        }
+
         return response()->json([
             'success' => true,
-            'accounts' => $accounts,
+            'accounts' => [$account],
         ]);
     }
+    // public function googleAccounts()
+    // {
+    //     $accounts = UserBusinessAccount::where('user_id', auth()->id())
+    //         ->where('provider', 'google')
+    //         ->where('status', 'connected')
+    //         ->get();
+
+    //     if ($accounts->isEmpty()) {
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'No Google Business connected',
+    //             'accounts' => []
+    //         ], 404);
+    //     }
+
+    //     return response()->json([
+    //         'success' => true,
+    //         'accounts' => $accounts,
+    //     ]);
+    // }
 }

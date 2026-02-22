@@ -19,9 +19,19 @@ use OpenAI\Laravel\Facades\OpenAI;
 
 class ReviewController extends Controller
 {
-
     public function index(Request $request)
     {
+        $accounts = \App\Models\UserBusinessAccount::where('user_id', auth()->id())->get();
+
+        if ($accounts->isEmpty()) {
+            return response()->json([
+                'current_page' => 1,
+                'data' => [],
+                'total' => 0,
+                'message' => 'No business account found. Please connect an account first.'
+            ]);
+        }
+
         $platform  = strtolower($request->query('platform', 'both')); // facebook / google / both
         $status    = strtolower($request->query('status', ''));       // replied / pending
         $search    = strtolower($request->query('search', ''));
@@ -29,10 +39,45 @@ class ReviewController extends Controller
         $limit     = intval($request->query('per_page', 10));
         $replyType = $request->query('reply_type');                    // ai_reply / manual_reply
 
+        if ($platform !== 'both') {
+            $specificAccount = $accounts->where('provider', $platform)->first();
+
+            if (!$specificAccount) {
+                return response()->json([
+                    'current_page' => 1,
+                    'data' => [],
+                    'total' => 0,
+                    'message' => "No $platform account linked."
+                ]);
+            }
+
+            if ($specificAccount->status === 'disconnect') {
+                return response()->json([
+                    'current_page' => 1,
+                    'data' => [],
+                    'total' => 0,
+                    'message' => "Your $platform account has been disconnected by the admin. Please contact support."
+                ]);
+            }
+        } else {
+            $connectedProviders = $accounts->where('status', 'connected')->pluck('provider')->toArray();
+            if (empty($connectedProviders)) {
+                return response()->json([
+                    'current_page' => 1,
+                    'data' => [],
+                    'total' => 0,
+                    'message' => "Your business accounts have been disconnected by the admin."
+                ]);
+            }
+        }
+
         $query = GetReview::where('user_id', auth()->id());
 
         if ($platform !== 'both') {
             $query->where('provider', $platform);
+        } else {
+            $connectedProviders = $accounts->where('status', 'connected')->pluck('provider')->toArray();
+            $query->whereIn('provider', $connectedProviders);
         }
 
         if ($status === 'replied') {
@@ -40,6 +85,10 @@ class ReviewController extends Controller
         }
 
         if ($status === 'pending') {
+            $query->whereNull('review_reply_text');
+        }
+
+        if ($status === 'ai_replied') {
             $query->whereNull('review_reply_text');
         }
 
@@ -58,11 +107,9 @@ class ReviewController extends Controller
             case 'oldest':
                 $query->orderBy('reviewed_at', 'asc');
                 break;
-
             case 'az':
                 $query->orderBy('reviewer_name', 'asc');
                 break;
-
             case 'latest':
             default:
                 $query->orderBy('reviewed_at', 'desc');
@@ -89,7 +136,7 @@ class ReviewController extends Controller
                 'reviewer_avatar' => $review->reviewer_image
                     ?? 'https://ui-avatars.com/api/?name=' . urlencode($review->reviewer_name),
 
-                'created_time' => Carbon::parse(
+                'created_time' => \Carbon\Carbon::parse(
                     $review->reviewed_at ?? $review->created_at
                 )->format('Y-m-d H:i:s'),
 
@@ -98,7 +145,7 @@ class ReviewController extends Controller
                 'replies' => $hasReply ? [[
                     'reply_id' => $review->review_reply_id,
                     'reply_text' => $review->review_reply_text,
-                    'created_time' => Carbon::parse($review->replied_at)->format('Y-m-d H:i:s'),
+                    'created_time' => \Carbon\Carbon::parse($review->replied_at)->format('Y-m-d H:i:s'),
                     'reply_type' => $review->ai_agent_id ? 'ai_reply' : 'manual_reply',
                 ]] : [],
             ];
@@ -106,6 +153,93 @@ class ReviewController extends Controller
 
         return response()->json($reviews);
     }
+
+    // public function index(Request $request)
+    // {
+    //     $platform  = strtolower($request->query('platform', 'both')); // facebook / google / both
+    //     $status    = strtolower($request->query('status', ''));       // replied / pending
+    //     $search    = strtolower($request->query('search', ''));
+    //     $sort      = strtolower($request->query('sort', 'latest'));   // latest / oldest / az
+    //     $limit     = intval($request->query('per_page', 10));
+    //     $replyType = $request->query('reply_type');                    // ai_reply / manual_reply
+
+    //     $query = GetReview::where('user_id', auth()->id());
+
+    //     if ($platform !== 'both') {
+    //         $query->where('provider', $platform);
+    //     }
+
+    //     if ($status === 'replied') {
+    //         $query->whereNotNull('review_reply_text');
+    //     }
+
+    //     if ($status === 'pending') {
+    //         $query->whereNull('review_reply_text');
+    //     }
+
+    //     if ($replyType) {
+    //         $query->where('ai_agent_id', $replyType === 'ai_reply' ? '!=' : '=', null);
+    //     }
+
+    //     if ($search) {
+    //         $query->where(function ($q) use ($search) {
+    //             $q->whereRaw('LOWER(reviewer_name) LIKE ?', ["%{$search}%"])
+    //                 ->orWhereRaw('LOWER(review_text) LIKE ?', ["%{$search}%"]);
+    //         });
+    //     }
+
+    //     switch ($sort) {
+    //         case 'oldest':
+    //             $query->orderBy('reviewed_at', 'asc');
+    //             break;
+
+    //         case 'az':
+    //             $query->orderBy('reviewer_name', 'asc');
+    //             break;
+
+    //         case 'latest':
+    //         default:
+    //             $query->orderBy('reviewed_at', 'desc');
+    //             break;
+    //     }
+
+    //     $reviews = $query->paginate($limit);
+
+    //     $reviews->getCollection()->transform(function ($review) {
+
+    //         $hasReply = !empty($review->review_reply_text);
+
+    //         return [
+    //             'provider' => $review->provider,
+    //             'review_id' => $review->provider_review_id,
+    //             'page_id' => $review->page_id,
+
+    //             'review_text' => $review->review_text,
+    //             'rating' => (int) $review->rating,
+    //             'recommendation_type' => $review->rating >= 4 ? 'positive' : 'negative',
+
+    //             'reviewer_name' => $review->reviewer_name,
+
+    //             'reviewer_avatar' => $review->reviewer_image
+    //                 ?? 'https://ui-avatars.com/api/?name=' . urlencode($review->reviewer_name),
+
+    //             'created_time' => Carbon::parse(
+    //                 $review->reviewed_at ?? $review->created_at
+    //             )->format('Y-m-d H:i:s'),
+
+    //             'reply_status' => $hasReply ? 'replied' : 'pending',
+
+    //             'replies' => $hasReply ? [[
+    //                 'reply_id' => $review->review_reply_id,
+    //                 'reply_text' => $review->review_reply_text,
+    //                 'created_time' => Carbon::parse($review->replied_at)->format('Y-m-d H:i:s'),
+    //                 'reply_type' => $review->ai_agent_id ? 'ai_reply' : 'manual_reply',
+    //             ]] : [],
+    //         ];
+    //     });
+
+    //     return response()->json($reviews);
+    // }
 
 
     public function reply(Request $request)
