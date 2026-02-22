@@ -24,6 +24,7 @@
     20 => 'Illuminate\\Translation\\TranslationServiceProvider',
     21 => 'Illuminate\\Validation\\ValidationServiceProvider',
     22 => 'Illuminate\\View\\ViewServiceProvider',
+<<<<<<< HEAD
     23 => 'Laravel\\Pail\\PailServiceProvider',
     24 => 'Laravel\\Sail\\SailServiceProvider',
     25 => 'Laravel\\Sanctum\\SanctumServiceProvider',
@@ -35,6 +36,26 @@
     31 => 'Pest\\Laravel\\PestServiceProvider',
     32 => 'Spatie\\Permission\\PermissionServiceProvider',
     33 => 'App\\Providers\\AppServiceProvider',
+=======
+    23 => 'Laravel\\Cashier\\CashierServiceProvider',
+    24 => 'Laravel\\Pail\\PailServiceProvider',
+    25 => 'Laravel\\Sail\\SailServiceProvider',
+    26 => 'Laravel\\Sanctum\\SanctumServiceProvider',
+    27 => 'Laravel\\Socialite\\SocialiteServiceProvider',
+    28 => 'Laravel\\Tinker\\TinkerServiceProvider',
+    29 => 'LucianoTonet\\GroqLaravel\\GroqServiceProvider',
+    30 => 'Carbon\\Laravel\\ServiceProvider',
+    31 => 'NunoMaduro\\Collision\\Adapters\\Laravel\\CollisionServiceProvider',
+    32 => 'Termwind\\Laravel\\TermwindServiceProvider',
+    33 => 'OpenAI\\Laravel\\ServiceProvider',
+    34 => 'Pest\\Laravel\\PestServiceProvider',
+    35 => 'Propaganistas\\LaravelDisposableEmail\\DisposableEmailServiceProvider',
+    36 => 'SimpleSoftwareIO\\QrCode\\QrCodeServiceProvider',
+    37 => 'Spatie\\Permission\\PermissionServiceProvider',
+    38 => 'App\\Providers\\EventServiceProvider',
+    39 => 'App\\Providers\\AppServiceProvider',
+    40 => 'App\\Providers\\EventServiceProvider',
+>>>>>>> dev
   ),
   'eager' => 
   array (
@@ -48,6 +69,7 @@
     7 => 'Illuminate\\Pagination\\PaginationServiceProvider',
     8 => 'Illuminate\\Session\\SessionServiceProvider',
     9 => 'Illuminate\\View\\ViewServiceProvider',
+<<<<<<< HEAD
     10 => 'Laravel\\Pail\\PailServiceProvider',
     11 => 'Laravel\\Sanctum\\SanctumServiceProvider',
     12 => 'Carbon\\Laravel\\ServiceProvider',
@@ -56,6 +78,22 @@
     15 => 'Pest\\Laravel\\PestServiceProvider',
     16 => 'Spatie\\Permission\\PermissionServiceProvider',
     17 => 'App\\Providers\\AppServiceProvider',
+=======
+    10 => 'Laravel\\Cashier\\CashierServiceProvider',
+    11 => 'Laravel\\Pail\\PailServiceProvider',
+    12 => 'Laravel\\Sanctum\\SanctumServiceProvider',
+    13 => 'LucianoTonet\\GroqLaravel\\GroqServiceProvider',
+    14 => 'Carbon\\Laravel\\ServiceProvider',
+    15 => 'NunoMaduro\\Collision\\Adapters\\Laravel\\CollisionServiceProvider',
+    16 => 'Termwind\\Laravel\\TermwindServiceProvider',
+    17 => 'Pest\\Laravel\\PestServiceProvider',
+    18 => 'Propaganistas\\LaravelDisposableEmail\\DisposableEmailServiceProvider',
+    19 => 'SimpleSoftwareIO\\QrCode\\QrCodeServiceProvider',
+    20 => 'Spatie\\Permission\\PermissionServiceProvider',
+    21 => 'App\\Providers\\EventServiceProvider',
+    22 => 'App\\Providers\\AppServiceProvider',
+    23 => 'App\\Providers\\EventServiceProvider',
+>>>>>>> dev
   ),
   'deferred' => 
   array (
@@ -217,6 +255,12 @@
     'Laravel\\Sail\\Console\\PublishCommand' => 'Laravel\\Sail\\SailServiceProvider',
     'Laravel\\Socialite\\Contracts\\Factory' => 'Laravel\\Socialite\\SocialiteServiceProvider',
     'command.tinker' => 'Laravel\\Tinker\\TinkerServiceProvider',
+<<<<<<< HEAD
+=======
+    'OpenAI\\Client' => 'OpenAI\\Laravel\\ServiceProvider',
+    'OpenAI\\Contracts\\ClientContract' => 'OpenAI\\Laravel\\ServiceProvider',
+    'openai' => 'OpenAI\\Laravel\\ServiceProvider',
+>>>>>>> dev
   ),
   'when' => 
   array (
@@ -268,5 +312,11 @@
     'Laravel\\Tinker\\TinkerServiceProvider' => 
     array (
     ),
+<<<<<<< HEAD
+=======
+    'OpenAI\\Laravel\\ServiceProvider' => 
+    array (
+    ),
+>>>>>>> dev
   ),
 );

@@ -14,6 +14,10 @@ return [
     |
     */
 
+    'gemini' => [
+        'key' => env('GEMINI_API_KEY'),
+    ],
+
     'postmark' => [
         'key' => env('POSTMARK_API_KEY'),
     ],
@@ -41,16 +45,24 @@ return [
         'redirect'      => '/api/auth/github/callback',
     ],
 
-    'facebook' => [
-        'client_id'     => env('FACEBOOK_CLIENT_ID'),
-        'client_secret' => env('FACEBOOK_CLIENT_SECRET'),
-        'redirect'      => '/api/auth/facebook/callback',
+    'google' => [
+        'client_id'              => null,
+        'client_secret'          => null,
+        'redirect'               => null,
+        'business_redirect'      => null,
     ],
 
-    'google' => [
-        'client_id'     => env('GOOGLE_CLIENT_ID'),
-        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
-        'redirect'      => '/api/auth/google/callback',
+    'facebook' => [
+        // User Login App
+        'client_id'     => null,
+        'client_secret' => null,
+        'redirect'      => null,
+
+        // Page / Business App
+        'page_client_id'     => null,
+        'page_client_secret' => null,
+        'page_redirect'      => null,
     ],
+
 
 ];
