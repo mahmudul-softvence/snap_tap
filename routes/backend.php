@@ -35,6 +35,9 @@ Route::middleware('role:super_admin', 'auth:sanctum')->group(function () {
 
 //user profile details
 Route::middleware('role:super_admin', 'auth:sanctum')->group(function () {
+    Route::get('admin/ai_agent/{id}', [UserProfileManageController::class, 'user_ai_agents']);
+
+
     Route::get('/admin/user-profile-show/{id}', [UserProfileManageController::class, 'userDetailsShow']);
     Route::put('/admin/user-profile-Update/{id}', [UserProfileManageController::class, 'userDetailsUpdate']);
     Route::get('/admin/user-profile-integration/{id}', [UserProfileManageController::class, 'userIntegrationDetails']);

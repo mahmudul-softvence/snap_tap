@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Backend;
 
 use App\Http\Controllers\Controller;
+use App\Models\AiAgent;
 use Illuminate\Support\Facades\Auth;
 use App\Models\User;
 use App\Services\ImageUpload;
@@ -11,6 +12,7 @@ use Illuminate\Validation\Rule;
 use App\Models\BusinessProfile;
 use App\Models\GetReview;
 use App\Models\UserBusinessAccount;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class UserProfileManageController extends Controller
@@ -229,5 +231,45 @@ class UserProfileManageController extends Controller
             'success' => true,
             'message' => ucfirst($provider) . ' account and its reviews deleted successfully'
         ], 200);
+    }
+
+
+
+
+
+    public function user_ai_agents(Request $request, $id): JsonResponse
+    {
+        $perPage = $request->input('per_page', 10);
+
+        $query = AiAgent::where('user_id', $id);
+
+        $total_agents = $query->count();
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('method', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('method')) {
+            $query->where('method', $request->method);
+        }
+
+        if ($request->input('sort') === 'oldest') {
+            $query->orderBy('created_at', 'asc');
+        } else {
+            $query->orderBy('created_at', 'desc');
+        }
+
+        $agents = $query->paginate($perPage);
+
+        return response()->json([
+            'success' => true,
+            'data' => $agents,
+            'total_agents' => $total_agents
+        ]);
     }
 }
