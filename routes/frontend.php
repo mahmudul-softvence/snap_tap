@@ -20,34 +20,33 @@ use App\Http\Controllers\Frontend\PaymentMethodController;
 use App\Http\Controllers\Frontend\PlanController;
 use App\Http\Controllers\Frontend\SubscriptionController;
 
-Route::middleware('guest:sanctum')->group(function () {
 
-    Route::controller(ForgotPasswordController::class)->group(function () {
-        Route::post('forgot-password', 'forgotPassword')->middleware('throttle:forgot-password');
-        Route::post('verify-otp', 'verifyOtp');
-        Route::post('resend-otp', 'resendOtp')->middleware('throttle:resend-otp');
-        Route::post('reset-password', 'resetPassword');
-    });
-
-    Route::controller(SocialiteController::class)->group(function () {
-        Route::get('/auth/{provider}/redirect', 'redirect');
-        Route::get('/auth/{provider}/callback', 'callback');
-    });
-
-    Route::controller(RegisterController::class)->group(function () {
-        Route::post('register', 'register');
-        Route::post('login', 'login');
-        Route::get('auth/verify_email/{id}/{hash}', 'verify_email')
-            ->middleware('signed')->name('verification.verify');
-        Route::post('auth/resend_verification', 'resend_verification');
-    });
-
-    Route::post('/2fa/login', [TwoFactorController::class, 'loginVerify']);
-    //Email 2FA OTP sent
-    Route::post('/2fa/email/send', [TwoFactorController::class, 'sendEmailCode']);
-
-    Route::get('change_review_status/{id}', [ReviewReqController::class, 'change_review_status']);
+Route::controller(ForgotPasswordController::class)->group(function () {
+    Route::post('forgot-password', 'forgotPassword')->middleware('throttle:forgot-password');
+    Route::post('verify-otp', 'verifyOtp');
+    Route::post('resend-otp', 'resendOtp')->middleware('throttle:resend-otp');
+    Route::post('reset-password', 'resetPassword');
 });
+
+Route::controller(SocialiteController::class)->group(function () {
+    Route::get('/auth/{provider}/redirect', 'redirect');
+    Route::get('/auth/{provider}/callback', 'callback');
+});
+
+Route::controller(RegisterController::class)->group(function () {
+    Route::post('register', 'register');
+    Route::post('login', 'login');
+    Route::get('auth/verify_email/{id}/{hash}', 'verify_email')
+        ->middleware('signed')->name('verification.verify');
+    Route::post('auth/resend_verification', 'resend_verification');
+});
+
+Route::post('/2fa/login', [TwoFactorController::class, 'loginVerify']);
+//Email 2FA OTP sent
+Route::post('/2fa/email/send', [TwoFactorController::class, 'sendEmailCode']);
+
+Route::get('change_review_status/{id}', [ReviewReqController::class, 'change_review_status']);
+
 
 
 Route::middleware('auth:sanctum')->group(function () {
@@ -119,7 +118,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
 Route::get('/google/gmb/callback', [GmbController::class, 'callback']);
 
-Route::middleware('auth:sanctum','hasSubscription')->group(function () {
+Route::middleware('auth:sanctum', 'hasSubscription')->group(function () {
     Route::get('/google/gmb/auth-url', [GmbController::class, 'authUrl']);
     Route::get('/gmb/accounts', [GmbController::class, 'accounts']);
     Route::get('/gmb/locations/{account}', [GmbController::class, 'locations']);
@@ -165,7 +164,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
 Route::get('/facebook/callback', [FacebookController::class, 'callback']);
 // Facebook
-Route::middleware('auth:sanctum','hasSubscription')->group(function () {
+Route::middleware('auth:sanctum', 'hasSubscription')->group(function () {
     Route::get('facebook/auth-url', [FacebookController::class, 'authUrl']);
     Route::get('facebook/session', [FacebookController::class, 'getSessionData']);
     Route::post('facebook/connect-page', [FacebookController::class, 'connectPage']);
@@ -175,7 +174,7 @@ Route::middleware('auth:sanctum','hasSubscription')->group(function () {
 });
 
 
-Route::middleware('auth:sanctum','hasSubscription')->group(function () {
+Route::middleware('auth:sanctum', 'hasSubscription')->group(function () {
     // Review List + Filters
     Route::get('/reviews', [ReviewController::class, 'index']);
     // Reply to Review and Delete Reply
@@ -203,24 +202,3 @@ Route::middleware('auth:sanctum')->group(function () {
 
 
 
-// Route::get('/test-ai-reply', function () {
-//     $response = OpenAI::chat()->create([
-//         'model' => 'gpt-5.2',
-//         'messages' => [
-//             [
-//                 'role' => 'user',
-//                 'content' => "Based on the following review, generate a short, easy-to-read, and polite reply that is between 20 to 40 words. Avoid personal information like the user's name, and keep the tone simple and professional.\n\nReview:Excelent Developer\n\nPlease generate one of the following types of responses: \n1. A positive reply if the review is praising our service or product. \n2. A negative reply if the review is critical or complaining about the service or product. \n3. A help request reply if the review is asking for support or assistance."
-//             ],
-//         ]
-//     ]);
-
-//     if (isset($response['choices'][0]['message']['content'])) {
-//         $replyText = $response['choices'][0]['message']['content'];
-//     } else {
-//         $replyText = 'Thank you for your review! We appreciate your feedback.';
-//     }
-
-//     return response()->json([
-//         'reply' => $replyText
-//     ]);
-// });

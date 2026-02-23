@@ -32,6 +32,7 @@ class GmbController extends Controller
         ]);
     }
 
+    
     //OAuth Callback
     public function callback(Request $request)
     {
@@ -103,6 +104,7 @@ class GmbController extends Controller
         return redirect(config('app.frontend_url') . '/gmb/success');
     }
 
+
     //Get valid Google access token
     private function getToken(): string
     {
@@ -146,6 +148,7 @@ class GmbController extends Controller
         return $account->access_token;
     }
 
+
     //List Google Business Accounts
     public function accounts()
     {
@@ -154,6 +157,7 @@ class GmbController extends Controller
             ->json();
     }
 
+
     //List Locations under an Account
     public function locations($account)
     {
@@ -161,6 +165,7 @@ class GmbController extends Controller
             ->get("https://mybusinessbusinessinformation.googleapis.com/v1/{$account}/locations")
             ->json();
     }
+
 
     //List Reviews of a Location
     public function reviews($location)
@@ -201,7 +206,6 @@ class GmbController extends Controller
     }
 
 
-
     ///Mock Account create for google
     public function createMockGoogle(Request $request)
     {
@@ -236,24 +240,7 @@ class GmbController extends Controller
         ]);
     }
 
-    // public function createMockGoogle(Request $request)
-    // {
-    //     $userId = $request->user_id;
 
-    //     $dynamicProviderId = 'gmb_123456_' . $userId;
-
-    //     \App\Models\UserBusinessAccount::updateOrCreate(
-    //         ['user_id' => $userId, 'provider' => 'google'],
-    //         [
-    //             'provider_account_id' => $dynamicProviderId,
-    //             'business_name' => 'Test Business User ' . $userId,
-    //             'access_token' => 'mock_token',
-    //             'status' => 'connected',
-    //         ]
-    //     );
-
-    //     return response()->json(["message" => "Connect GMB Profile, created for User ID: $userId"]);
-    // }
     ///mock account GMB
     public function googleAccounts()
     {
@@ -283,24 +270,5 @@ class GmbController extends Controller
             'accounts' => [$account],
         ]);
     }
-    // public function googleAccounts()
-    // {
-    //     $accounts = UserBusinessAccount::where('user_id', auth()->id())
-    //         ->where('provider', 'google')
-    //         ->where('status', 'connected')
-    //         ->get();
 
-    //     if ($accounts->isEmpty()) {
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'No Google Business connected',
-    //             'accounts' => []
-    //         ], 404);
-    //     }
-
-    //     return response()->json([
-    //         'success' => true,
-    //         'accounts' => $accounts,
-    //     ]);
-    // }
 }
