@@ -192,6 +192,18 @@ class FacebookController extends Controller
 
     public function pages()
     {
+        $disconnectedAccount = UserBusinessAccount::where('user_id', auth()->id())
+            ->where('provider', 'facebook')
+            ->where('status', 'disconnect')
+            ->first();
+
+        if ($disconnectedAccount) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Your account disconnect by admin, please contact with admin'
+            ], 403);
+        }
+
         $accounts = UserBusinessAccount::where('user_id', auth()->id())
             ->where('provider', 'facebook')
             ->where('status', 'connected')

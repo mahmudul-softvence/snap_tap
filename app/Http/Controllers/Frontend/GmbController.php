@@ -274,7 +274,7 @@ class GmbController extends Controller
                 'success' => false,
                 'status_type' => 'admin_suspended',
                 'message' => 'Your Google account has been disconnected by the admin. Please contact support.',
-                'accounts' => [],
+                'accounts' => [$account],
             ], 403);
         }
 

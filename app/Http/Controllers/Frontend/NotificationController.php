@@ -68,20 +68,6 @@ class NotificationController extends Controller
     }
 
 
-
-
-    // public function index(Request $request)
-    // {
-    //     $user = $request->user();
-
-    //     return response()->json([
-    //         'unread_count' => $user->unreadNotifications()->count(),
-    //         'notifications' => $user->notifications()
-    //             ->latest()
-    //             ->paginate(20),
-    //     ]);
-    // }
-
     //Mark single notification as read
     public function markAsRead(Request $request, $id)
     {

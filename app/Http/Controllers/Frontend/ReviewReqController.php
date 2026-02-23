@@ -54,32 +54,6 @@ class ReviewReqController extends Controller
      */
     public function create(Request $request): JsonResponse
     {
-        // $user = $request->user();
-        // $subscription = $user->subscription('default');
-
-        // if (!$subscription) {
-        //     return response()->json([
-        //         'success' => false,
-        //         'message' => 'You need to add a subscription plan to send review requests.'
-        //     ], 403);
-        // }
-
-        // if (
-        //     $subscription &&
-        //     Subscription::where('user_id', Auth::id())
-        //     ->where('stripe_status', 'trialing')
-        //     ->exists()
-        // ) {
-        //     $reviewCount = auth()->user()->reviews()->count();
-
-        //     if ($reviewCount >= 5) {
-        //         return response()->json([
-        //             'success' => false,
-        //             'message' => 'Free trial users can only send up to 5 review requests.'
-        //         ], 403);
-        //     }
-        // }
-
         $validated = $request->validate([
             'name'        => 'required|string|max:255',
             'email'       => 'nullable|email|max:255',
